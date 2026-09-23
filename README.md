@@ -1,32 +1,108 @@
-# React + TypeScript + Vite
+# CarTrackerWeb — веб-версия CarTracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Веб-версия iOS-приложения CarTracker для учёта работ по автомобилю.
+Работает как PWA, устанавливается на домашний экран iPhone.
 
-Currently, two official plugins are available:
+## 🌐 Live URL
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+**https://car-tracker-web-pi.vercel.app**
 
-## React Compiler
+## Статус (обновлено: 2026-09-23)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+**Текущая версия: v1.0** ✅
 
-## Expanding the Oxlint configuration
+### ✅ Реализовано
+- [x] Работы: список, добавление, редактирование, удаление
+- [x] Поиск и фильтр по категориям
+- [x] Сводка «Всего / За год / Средних в месяц»
+- [x] Графики: расходы по месяцам (Recharts) и по категориям (donut)
+- [x] Напоминания о ТО с прогресс-баром и статусами (🟢🟡🔴⚪)
+- [x] Типовой набор из 4 напоминаний
+- [x] Экспорт бэкапа в JSON
+- [x] Импорт JSON с объединением (совместимо с iOS-бэкапами)
+- [x] PWA: манифест, Service Worker, установка на iOS
+- [x] Работа офлайн
+- [x] Деплой на Vercel с автодеплоем
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+### ⚠️ Ограничения (по сравнению с iOS)
+- Нет push-уведомлений
+- Нет фоновой проверки напоминаний (у веба нет аналога BGTaskScheduler)
+- Данные хранятся локально (localStorage), синхронизация — через экспорт/импорт
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+## Технологии
+- React 18 + TypeScript
+- Vite + vite-plugin-pwa
+- Tailwind CSS v4
+- Recharts (графики)
+- Zustand (состояние + persist)
+- localStorage (хранение)
+- Vercel (деплой)
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Локальная разработка
+
+```bash
+npm install
+npm run dev          # http://localhost:5173
+npm run build        # production-сборка
+npm run preview -- --host   # preview с доступом по сети
+
+
+
+src/
+├── models/             — CarWork, Reminder, BackupData (TypeScript)
+├── stores/             — Zustand: useCarWorkStore, useReminderStore,
+│                         backupManager, statsHelpers, useReminderStore
+├── components/
+│   ├── works/          — WorksList, WorkRow, WorkForm
+│   ├── stats/          — StatsView, MonthlyChart, CategoryChart
+│   ├── reminders/      — RemindersList, ReminderCard, ReminderForm
+│   ├── BackupMenu.tsx
+│   └── ImportDialog.tsx
+└── App.tsx             — TabView с тремя вкладками
+
+
+
+**Замените `ВАШ_ЛОГИН`** на ваш GitHub-логин.
+
+### Шаг 1.2. Создаём `CHANGELOG.md` в `CarTrackerWeb/`
+
+```markdown
+# Changelog
+
+## [1.0] — 2026-09-23
+
+Первый релиз веб-версии CarTracker.
+
+### Added
+- **Работы:**
+  - Модели CarWork, WorkCategory на TypeScript
+  - Zustand-хранилище с persist в localStorage
+  - Список, добавление, редактирование, удаление
+  - Поиск и фильтр по категориям
+  - Сводка «Всего / За год / Записей»
+- **Статистика:**
+  - Recharts: BarChart по месяцам, PieChart по категориям
+  - Переключатель периода 3/6/12 месяцев
+  - Кастомные тултипы, легенда с процентами
+- **Напоминания:**
+  - Модель Reminder + логика статусов
+  - Карточки с прогресс-баром и цветовой индикацией
+  - «Сделано сегодня», вкл/выкл, редактирование, удаление
+  - Типовой набор из 4 напоминаний
+- **Экспорт/импорт:**
+  - Скачивание JSON-бэкапа
+  - Импорт с объединением (дубликаты по id пропускаются)
+  - Показ статистики импорта
+  - Совместимость с iOS-бэкапами
+- **PWA:**
+  - Манифест, иконки, Service Worker
+  - Установка на домашний экран iOS
+  - Работа офлайн
+- **Инфраструктура:**
+  - Деплой на Vercel
+  - Автодеплой при push в main
+  - Production URL: https://car-tracker-web-pi.vercel.app
+
+
+
+  
