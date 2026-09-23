@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { WorksList } from './components/works/WorksList';
 import { StatsView } from './components/stats/StatsView';
+import { RemindersList } from './components/reminders/RemindersList';
 
 type Tab = 'works' | 'stats' | 'reminders';
 
@@ -16,11 +17,7 @@ function App() {
       <main className="flex-1 overflow-y-auto p-4">
         {activeTab === 'works' && <WorksList />}
         {activeTab === 'stats' && <StatsView />}
-        {activeTab === 'reminders' && (
-          <div className="text-gray-500 text-center py-12">
-            🔔 Здесь будут напоминания
-          </div>
-        )}
+        {activeTab === 'reminders' && <RemindersList />}
       </main>
 
       <nav className="bg-white border-t border-gray-200 flex sticky bottom-0 z-20">
