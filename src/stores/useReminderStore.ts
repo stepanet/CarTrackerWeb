@@ -18,7 +18,7 @@ interface ReminderState {
 
 export const useReminderStore = create<ReminderState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       reminders: [],
 
       add: (reminder) =>
