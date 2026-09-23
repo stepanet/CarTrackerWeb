@@ -105,7 +105,17 @@ export async function readBackupFile(file: File): Promise<BackupData> {
     );
   }
 
-  return parsed;
+    // Нормализация: добавляем subWorks: [] туда, где его нет
+  const normalized: BackupData = {
+    ...parsed,
+    works: parsed.works.map((work) => ({
+      ...work,
+      subWorks: work.subWorks ?? [],
+    })),
+  };
+
+  return normalized;
+  
 }
 
 /** Проверка, что объект похож на BackupData */

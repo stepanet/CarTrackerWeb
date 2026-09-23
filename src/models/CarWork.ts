@@ -1,3 +1,6 @@
+import type { SubItem } from './SubItem';
+import { getSubItemTotal } from './SubItem';
+
 /**
  * Категории работ.
  * Значения — русские строки, точно совпадают с WorkCategory в Swift.
@@ -43,6 +46,7 @@ export interface CarWork {
   cost: number;
   note: string;
   isDone: boolean;
+  subWorks: SubItem[];    // ← НОВОЕ ПОЛЕ
 }
 
 /**
@@ -57,15 +61,45 @@ export function createCarWork(
   cost: number,
   note: string,
   isDone: boolean = true,
+  subWorks: SubItem[] = [],
 ): CarWork {
+  // Если есть подработы — стоимость = сумма подработ
+  const finalCost = subWorks.length > 0
+    ? subWorks.reduce((sum, item) => sum + getSubItemTotal(item), 0)
+    : cost;
+
   return {
     id: crypto.randomUUID(),
     title: title.trim(),
     category,
     date: date.toISOString(),
     mileage,
-    cost,
+    cost: finalCost,
     note,
     isDone,
+    subWorks,
   };
+}
+
+/** Есть ли подработы */
+export function hasSubItems(work: CarWork): boolean {
+  return work.subWorks && work.subWorks.length > 0;
+}
+
+/** Количество работ (услуг) */
+export function getWorksCount(work: CarWork): number {
+  if (!work.subWorks) return 0;
+  return work.subWorks.filter((item) => item.type === 'work').length;
+}
+
+/** Количество деталей */
+export function getPartsCount(work: CarWork): number {
+  if (!work.subWorks) return 0;
+  return work.subWorks.filter((item) => item.type === 'part').length;
+}
+
+/** Сумма всех подработ */
+export function getSubWorksTotal(work: CarWork): number {
+  if (!work.subWorks) return 0;
+  return work.subWorks.reduce((sum, item) => sum + getSubItemTotal(item), 0);
 }
