@@ -2,24 +2,46 @@ import { useState } from 'react';
 import { WorksList } from './components/works/WorksList';
 import { StatsView } from './components/stats/StatsView';
 import { RemindersList } from './components/reminders/RemindersList';
+import { BackupMenu } from './components/BackupMenu';
+import { ImportDialog } from './components/ImportDialog';
 
 type Tab = 'works' | 'stats' | 'reminders';
 
+interface AlertMessage {
+  title: string;
+  message: string;
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('works');
+  const [showingImport, setShowingImport] = useState(false);
+  const [alert, setAlert] = useState<AlertMessage | null>(null);
+
+  const showAlert = (title: string, message: string) => {
+    setAlert({ title, message });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Шапка */}
       <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20">
-        <h1 className="text-xl font-semibold text-gray-900">CarTracker</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold text-gray-900">CarTracker</h1>
+          <BackupMenu
+            onImportClick={() => setShowingImport(true)}
+            onShowAlert={showAlert}
+          />
+        </div>
       </header>
 
+      {/* Контент */}
       <main className="flex-1 overflow-y-auto p-4">
         {activeTab === 'works' && <WorksList />}
         {activeTab === 'stats' && <StatsView />}
         {activeTab === 'reminders' && <RemindersList />}
       </main>
 
+      {/* Нижняя навигация */}
       <nav className="bg-white border-t border-gray-200 flex sticky bottom-0 z-20">
         <TabButton
           active={activeTab === 'works'}
@@ -40,6 +62,24 @@ function App() {
           label="Напоминания"
         />
       </nav>
+
+      {/* Диалог импорта */}
+      {showingImport && (
+        <ImportDialog
+          onClose={() => setShowingImport(false)}
+          onSuccess={(msg) => showAlert('Импорт завершён', msg)}
+          onError={showAlert}
+        />
+      )}
+
+      {/* Alert */}
+      {alert && (
+        <AlertDialog
+          title={alert.title}
+          message={alert.message}
+          onClose={() => setAlert(null)}
+        />
+      )}
     </div>
   );
 }
@@ -62,6 +102,39 @@ function TabButton({ active, onClick, icon, label }: TabButtonProps) {
       <span className="text-2xl mb-1">{icon}</span>
       <span className="text-xs font-medium">{label}</span>
     </button>
+  );
+}
+
+// ─── Alert ────────────────────────────────────
+
+interface AlertDialogProps {
+  title: string;
+  message: string;
+  onClose: () => void;
+}
+
+function AlertDialog({ title, message, onClose }: AlertDialogProps) {
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-sm overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-5 text-center">
+          <h3 className="font-semibold text-gray-900 mb-2">{title}</h3>
+          <p className="text-sm text-gray-600">{message}</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="w-full py-3 border-t border-gray-200 font-medium text-blue-600 hover:bg-gray-50"
+        >
+          OK
+        </button>
+      </div>
+    </div>
   );
 }
 
