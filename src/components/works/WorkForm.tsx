@@ -216,13 +216,15 @@ export function WorkForm({ work, onSave, onCancel }: WorkFormProps) {
             <button
               type="button"
               onClick={() => setIsDone(!isDone)}
-              className={`w-12 h-7 rounded-full transition-colors relative ${
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
                 isDone ? 'bg-blue-500' : 'bg-gray-300'
               }`}
+              role="switch"
+              aria-checked={isDone}
             >
               <span
-                className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${
-                  isDone ? 'translate-x-5' : 'translate-x-0.5'
+                className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
+                  isDone ? 'translate-x-[22px]' : 'translate-x-[2px]'
                 }`}
               />
             </button>
