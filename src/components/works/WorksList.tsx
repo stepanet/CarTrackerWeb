@@ -6,19 +6,20 @@ import { WorkRow } from './WorkRow';
 import { WorkForm } from './WorkForm';
 import { WorkDetail } from './WorkDetail';
 
-//тест - тест -
-
 export function WorksList() {
   const works = useCarWorkStore((s) => s.works);
   const add = useCarWorkStore((s) => s.add);
   const update = useCarWorkStore((s) => s.update);
   const remove = useCarWorkStore((s) => s.remove);
+  const isLoading = useCarWorkStore((s) => s.isLoading);
+  const error = useCarWorkStore((s) => s.error);
 
   const [searchText, setSearchText] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<WorkCategory | null>(null);
   const [showingForm, setShowingForm] = useState(false);
   const [editingWork, setEditingWork] = useState<CarWork | null>(null);
   const [viewingWork, setViewingWork] = useState<CarWork | null>(null);
+  const [savingError, setSavingError] = useState<string | null>(null);
 
   // Статистика
   const totalCost = useMemo(
@@ -45,17 +46,42 @@ export function WorksList() {
     });
   }, [works, searchText, selectedCategory]);
 
-  const handleSave = (work: CarWork) => {
-    if (editingWork) {
-      update(work);
-    } else {
-      add(work);
+  const handleSave = async (work: CarWork) => {
+    try {
+      setSavingError(null);
+      if (editingWork) {
+        await update(work);
+      } else {
+        await add(work);
+      }
+      closeForm();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Не удалось сохранить';
+      setSavingError(message);
     }
-    closeForm();
+  };
+
+  const handleDelete = async (work: CarWork) => {
+    try {
+      setSavingError(null);
+      await remove(work.id);
+      setViewingWork(null);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Не удалось удалить';
+      setSavingError(message);
+    }
   };
 
   const openAddForm = () => {
     setEditingWork(null);
+    setShowingForm(true);
+  };
+
+  const openEditForm = (work: CarWork) => {
+    setViewingWork(null);
+    setEditingWork(work);
     setShowingForm(true);
   };
 
@@ -70,6 +96,34 @@ export function WorksList() {
   return (
     <>
       <div className="space-y-4 pb-4">
+        {/* Индикатор загрузки */}
+        {isLoading && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 text-sm rounded-lg p-3 flex items-center gap-2">
+            <span className="animate-spin">⏳</span>
+            <span>Загрузка данных из облака...</span>
+          </div>
+        )}
+
+        {/* Ошибка загрузки */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
+            ⚠️ {error}
+          </div>
+        )}
+
+        {/* Ошибка сохранения */}
+        {savingError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 flex justify-between items-center">
+            <span>⚠️ {savingError}</span>
+            <button
+              onClick={() => setSavingError(null)}
+              className="text-red-500 hover:text-red-800"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Шапка со статистикой */}
         <div className="grid grid-cols-3 gap-2">
           <StatCard label="Всего" value={`${formatMoney(totalCost)} ₽`} icon="💰" />
@@ -120,7 +174,11 @@ export function WorksList() {
 
         {/* Список работ */}
         {filteredWorks.length === 0 ? (
-          <EmptyState hasWorks={works.length > 0} onAdd={openAddForm} />
+          <EmptyState
+            hasWorks={works.length > 0}
+            isLoading={isLoading}
+            onAdd={openAddForm}
+          />
         ) : (
           <div className="space-y-2">
             {filteredWorks.map((work) => (
@@ -128,7 +186,10 @@ export function WorksList() {
                 key={work.id}
                 work={work}
                 onEdit={() => setViewingWork(work)}
-                onDelete={remove}
+                onDelete={(id) => {
+                  const w = works.find((x) => x.id === id);
+                  if (w) handleDelete(w);
+                }}
               />
             ))}
           </div>
@@ -144,21 +205,13 @@ export function WorksList() {
         +
       </button>
 
-            {/* Детальный экран */}
+      {/* Детальный экран */}
       {viewingWork && (
         <WorkDetail
           work={viewingWork}
           onClose={() => setViewingWork(null)}
-          onEdit={() => {
-            const workToEdit = viewingWork;
-            setViewingWork(null);
-            setEditingWork(workToEdit);
-            setShowingForm(true);
-          }}
-          onDelete={() => {
-            remove(viewingWork.id);
-            setViewingWork(null);
-          }}
+          onEdit={() => openEditForm(viewingWork)}
+          onDelete={() => handleDelete(viewingWork)}
         />
       )}
 
@@ -209,7 +262,17 @@ function FilterChip({
   );
 }
 
-function EmptyState({ hasWorks, onAdd }: { hasWorks: boolean; onAdd: () => void }) {
+function EmptyState({
+  hasWorks,
+  isLoading,
+  onAdd,
+}: {
+  hasWorks: boolean;
+  isLoading: boolean;
+  onAdd: () => void;
+}) {
+  if (isLoading) return null;
+
   return (
     <div className="bg-white rounded-xl p-8 text-center shadow-sm">
       <p className="text-5xl mb-3">🚗</p>

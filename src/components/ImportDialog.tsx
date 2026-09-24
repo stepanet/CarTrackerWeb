@@ -19,12 +19,13 @@ export function ImportDialog({ onClose, onSuccess, onError }: ImportDialogProps)
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [backupData, setBackupData] = useState<BackupData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const works = useCarWorkStore((s) => s.works);
   const reminders = useReminderStore((s) => s.reminders);
-  const replaceAllWorks = useCarWorkStore((s) => s.replaceAll);
-  const replaceAllReminders = useReminderStore((s) => s.replaceAll);
+  const addWork = useCarWorkStore((s) => s.add);
+  const addReminder = useReminderStore((s) => s.add);
 
   const handleFileSelect = async (file: File) => {
     setSelectedFile(file);
@@ -45,29 +46,59 @@ export function ImportDialog({ onClose, onSuccess, onError }: ImportDialogProps)
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      handleFileSelect(file);
-    }
+    if (file) handleFileSelect(file);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
-    if (file) {
-      handleFileSelect(file);
-    }
+    if (file) handleFileSelect(file);
   };
 
-  const handleMerge = () => {
+  const handleMerge = async () => {
     if (!backupData) return;
     setIsProcessing(true);
 
     try {
       const merged = mergeBackup(backupData, works, reminders);
-      replaceAllWorks(merged.works);
-      replaceAllReminders(merged.reminders);
 
-      onSuccess(formatMergeResult(merged.result));
+      // Импортируем работы по одной (в новой архитектуре)
+      let worksAdded = 0;
+      let remindersAdded = 0;
+
+      // Работы: только новые (не дубликаты)
+      const existingWorkIds = new Set(works.map((w) => w.id));
+      const newWorks = merged.works.filter((w) => !existingWorkIds.has(w.id));
+
+      for (const work of newWorks) {
+        setProgress(`Импорт работ: ${worksAdded + 1} / ${newWorks.length}`);
+        await addWork(work);
+        worksAdded++;
+      }
+
+      // Напоминания: только новые
+      const existingReminderIds = new Set(reminders.map((r) => r.id));
+      const newReminders = merged.reminders.filter(
+        (r) => !existingReminderIds.has(r.id),
+      );
+
+      for (const reminder of newReminders) {
+        setProgress(
+          `Импорт напоминаний: ${remindersAdded + 1} / ${newReminders.length}`,
+        );
+        await addReminder(reminder);
+        remindersAdded++;
+      }
+
+      // Итоговое сообщение
+      const resultMessage = formatMergeResult({
+        addedWorks: worksAdded,
+        skippedWorks: backupData.works.length - worksAdded,
+        addedReminders: remindersAdded,
+        skippedReminders: backupData.reminders.length - remindersAdded,
+      });
+
+      onSuccess(resultMessage);
       onClose();
     } catch (err) {
       onError(
@@ -76,36 +107,7 @@ export function ImportDialog({ onClose, onSuccess, onError }: ImportDialogProps)
       );
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const handleReplace = () => {
-    if (!backupData) return;
-
-    if (
-      !confirm(
-        'Заменить все текущие данные?\n\nВсё, что сейчас в приложении, будет удалено. Отменить нельзя.',
-      )
-    ) {
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      replaceAllWorks(backupData.works);
-      replaceAllReminders(backupData.reminders);
-
-      onSuccess(
-        `Заменено: работ ${backupData.works.length}, напоминаний ${backupData.reminders.length}`,
-      );
-      onClose();
-    } catch (err) {
-      onError(
-        'Ошибка импорта',
-        err instanceof Error ? err.message : 'Неизвестная ошибка',
-      );
-    } finally {
-      setIsProcessing(false);
+      setProgress('');
     }
   };
 
@@ -176,10 +178,17 @@ export function ImportDialog({ onClose, onSuccess, onError }: ImportDialogProps)
               {/* Что произойдёт */}
               <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 space-y-2">
                 <p className="font-medium text-gray-900">Что произойдёт:</p>
-                <p>• Новые записи добавятся к существующим</p>
+                <p>• Новые записи добавятся к существующим в облаке</p>
                 <p>• Дубликаты (по ID) будут пропущены</p>
                 <p>• Существующие данные не удалятся</p>
               </div>
+
+              {/* Прогресс */}
+              {progress && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-700 text-sm rounded-lg p-3">
+                  ⏳ {progress}
+                </div>
+              )}
 
               {/* Кнопки */}
               <div className="space-y-2">
@@ -192,19 +201,12 @@ export function ImportDialog({ onClose, onSuccess, onError }: ImportDialogProps)
                 </button>
 
                 <button
-                  onClick={handleReplace}
-                  disabled={isProcessing}
-                  className="w-full py-2.5 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 disabled:bg-gray-100"
-                >
-                  ⚠️ Заменить всё
-                </button>
-
-                <button
                   onClick={() => {
                     setBackupData(null);
                     setSelectedFile(null);
                   }}
-                  className="w-full py-2.5 text-gray-600 text-sm hover:text-gray-900"
+                  disabled={isProcessing}
+                  className="w-full py-2.5 text-gray-600 text-sm hover:text-gray-900 disabled:text-gray-300"
                 >
                   Выбрать другой файл
                 </button>

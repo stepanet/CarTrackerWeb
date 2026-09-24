@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { WorksList } from './components/works/WorksList';
 import { StatsView } from './components/stats/StatsView';
 import { RemindersList } from './components/reminders/RemindersList';
@@ -6,6 +5,8 @@ import { BackupMenu } from './components/BackupMenu';
 import { ImportDialog } from './components/ImportDialog';
 import { AuthScreen } from './components/AuthScreen';
 import { useAuth } from './hooks/useAuth';
+import { useState, useEffect } from 'react';
+import { useCarWorkStore } from './stores/useCarWorkStore';
 
 type Tab = 'works' | 'stats' | 'reminders';
 
@@ -16,6 +17,39 @@ interface AlertMessage {
 
 function App() {
   const { user, loading, signOut } = useAuth();
+
+    const loadWorks = useCarWorkStore((s) => s.loadWorks);
+  const subscribeRealtime = useCarWorkStore((s) => s.subscribeRealtime);
+  const clearWorks = useCarWorkStore((s) => s.clearWorks);
+  const migrateFromLocalStorage = useCarWorkStore((s) => s.migrateFromLocalStorage);
+
+  // Загружаем данные при входе пользователя
+  useEffect(() => {
+    if (!user) {
+      clearWorks();
+      return;
+    }
+
+    async function bootstrap() {
+      try {
+        // 1. Пробуем мигрировать локальные данные (одноразово)
+        const migrated = await migrateFromLocalStorage(user.id);
+        if (migrated > 0) {
+          console.log(`✅ Мигрировано работ: ${migrated}`);
+        }
+
+        // 2. Загружаем всё из Supabase
+        await loadWorks(user.id);
+
+        // 3. Подписываемся на изменения
+        subscribeRealtime(user.id);
+      } catch (err) {
+        console.error('Ошибка инициализации:', err);
+      }
+    }
+
+    bootstrap();
+  }, [user, loadWorks, subscribeRealtime, clearWorks, migrateFromLocalStorage]);
 
   const [activeTab, setActiveTab] = useState<Tab>('works');
   const [showingImport, setShowingImport] = useState(false);
@@ -28,6 +62,7 @@ function App() {
   const handleSignOut = async () => {
     if (confirm('Выйти из аккаунта?')) {
       try {
+        clearWorks();
         await signOut();
       } catch (err) {
         showAlert(
