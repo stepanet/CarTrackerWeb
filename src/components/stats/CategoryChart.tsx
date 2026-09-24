@@ -14,18 +14,22 @@ interface CategoryChartProps {
   works: CarWork[];
 }
 
-// Палитра цветов для категорий — фиксированная, чтобы не «прыгала» при обновлениях
 const CATEGORY_COLORS: Record<WorkCategory, string> = {
-  'ТО': '#3b82f6',         // blue
-  'Ремонт': '#ef4444',     // red
-  'Шины': '#6b7280',       // gray
-  'Топливо': '#f59e0b',    // amber
-  'Страховка': '#10b981',  // emerald
-  'Прочее': '#8b5cf6',     // violet
+  'ТО': '#3b82f6',
+  'Ремонт': '#ef4444',
+  'Шины': '#6b7280',
+  'Топливо': '#f59e0b',
+  'Страховка': '#10b981',
+  'Прочее': '#8b5cf6',
 };
 
 export function CategoryChart({ works }: CategoryChartProps) {
   const data = useMemo(() => getCategoryCosts(works), [works]);
+
+  const totalSum = useMemo(
+    () => data.reduce((s, item) => s + item.total, 0),
+    [data],
+  );
 
   if (data.length === 0) {
     return (
@@ -47,8 +51,8 @@ export function CategoryChart({ works }: CategoryChartProps) {
         Расходы по категориям
       </h3>
 
-      {/* Круговая диаграмма */}
-      <div className="h-56 -mt-2">
+      {/* Круговая диаграмма с суммой в центре */}
+      <div className="h-56 relative">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -57,8 +61,8 @@ export function CategoryChart({ works }: CategoryChartProps) {
               nameKey="category"
               cx="50%"
               cy="50%"
-              innerRadius={55}
-              outerRadius={90}
+              innerRadius={65}
+              outerRadius={95}
               paddingAngle={2}
               stroke="none"
             >
@@ -72,6 +76,17 @@ export function CategoryChart({ works }: CategoryChartProps) {
             <Tooltip content={<CustomTooltip />} />
           </PieChart>
         </ResponsiveContainer>
+
+        {/* Центральный текст */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="text-center">
+            <p className="text-xs text-gray-500">Всего</p>
+            <p className="text-lg font-bold text-gray-900">
+              {shortCurrency(totalSum)}
+            </p>
+            <p className="text-xs text-gray-500">₽</p>
+          </div>
+        </div>
       </div>
 
       {/* Легенда */}
@@ -92,7 +107,7 @@ export function CategoryChart({ works }: CategoryChartProps) {
               {item.category}
             </span>
             <span className="font-medium text-gray-900 shrink-0">
-              {item.total.toLocaleString('ru-RU')} ₽
+              {item.total.toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
             </span>
             <span className="text-gray-400 text-xs w-10 text-right shrink-0">
               {item.percent.toFixed(0)}%
@@ -105,6 +120,11 @@ export function CategoryChart({ works }: CategoryChartProps) {
 }
 
 // ─── Вспомогательные ──────────────────────────
+
+function shortCurrency(value: number): string {
+  if (value >= 1000) return `${Math.round(value / 1000)}к`;
+  return String(Math.round(value));
+}
 
 interface TooltipPayload {
   payload: { category: WorkCategory; total: number; percent: number };
@@ -126,7 +146,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
         {CATEGORY_ICONS[item.category]} {item.category}
       </p>
       <p className="text-blue-300 font-semibold">
-        {item.total.toLocaleString('ru-RU')} ₽
+        {item.total.toLocaleString('ru-RU', { maximumFractionDigits: 0 })} ₽
       </p>
       <p className="text-gray-400 text-[10px]">
         {item.percent.toFixed(1)}% от общего
