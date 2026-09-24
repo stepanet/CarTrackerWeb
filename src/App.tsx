@@ -24,25 +24,25 @@ function App() {
   const migrateFromLocalStorage = useCarWorkStore((s) => s.migrateFromLocalStorage);
 
   // Загружаем данные при входе пользователя
-  useEffect(() => {
+    useEffect(() => {
     if (!user) {
       clearWorks();
       return;
     }
 
+    // Сохраняем user в локальную переменную — TypeScript поймёт,
+    // что внутри замыкания оно уже не null
+    const currentUser = user;
+
     async function bootstrap() {
       try {
-        // 1. Пробуем мигрировать локальные данные (одноразово)
-        const migrated = await migrateFromLocalStorage(user.id);
+        const migrated = await migrateFromLocalStorage(currentUser.id);
         if (migrated > 0) {
           console.log(`✅ Мигрировано работ: ${migrated}`);
         }
 
-        // 2. Загружаем всё из Supabase
-        await loadWorks(user.id);
-
-        // 3. Подписываемся на изменения
-        subscribeRealtime(user.id);
+        await loadWorks(currentUser.id);
+        subscribeRealtime(currentUser.id);
       } catch (err) {
         console.error('Ошибка инициализации:', err);
       }
