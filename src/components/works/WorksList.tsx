@@ -57,11 +57,6 @@ export function WorksList() {
     setShowingForm(true);
   };
 
-  const openEditForm = (work: CarWork) => {
-    setEditingWork(work);
-    setShowingForm(true);
-  };
-
   const closeForm = () => {
     setShowingForm(false);
     setEditingWork(null);

@@ -1,5 +1,5 @@
-import type { CarWork, WorkCategory } from '../models/CarWork';
-import { getSubItemTotal } from '../models/SubItem';
+import type { CarWork } from '../models/CarWork';
+import { getSubItemTotal, type SubItemType } from '../models/SubItem';
 
 /** Данные одной точки на графике по месяцам */
 export interface MonthlyCost {

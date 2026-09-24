@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { CarWork, WorkCategory } from '../../models/CarWork';
 import { ALL_CATEGORIES, CATEGORY_ICONS, createCarWork } from '../../models/CarWork';
 import type { SubItem, SubItemType } from '../../models/SubItem';
-import { SUB_ITEM_TYPE_ICONS, getSubItemTotal } from '../../models/SubItem';
+import { getSubItemTotal } from '../../models/SubItem';
 import { SubItemForm } from './SubItemForm';
 import { SubItemRow } from './SubItemRow';
 
