@@ -4,6 +4,8 @@ import { StatsView } from './components/stats/StatsView';
 import { RemindersList } from './components/reminders/RemindersList';
 import { BackupMenu } from './components/BackupMenu';
 import { ImportDialog } from './components/ImportDialog';
+import { AuthScreen } from './components/AuthScreen';
+import { useAuth } from './hooks/useAuth';
 
 type Tab = 'works' | 'stats' | 'reminders';
 
@@ -13,6 +15,8 @@ interface AlertMessage {
 }
 
 function App() {
+  const { user, loading, signOut } = useAuth();
+
   const [activeTab, setActiveTab] = useState<Tab>('works');
   const [showingImport, setShowingImport] = useState(false);
   const [alert, setAlert] = useState<AlertMessage | null>(null);
@@ -21,16 +25,59 @@ function App() {
     setAlert({ title, message });
   };
 
+  const handleSignOut = async () => {
+    if (confirm('Выйти из аккаунта?')) {
+      try {
+        await signOut();
+      } catch (err) {
+        showAlert(
+          'Ошибка',
+          err instanceof Error ? err.message : 'Не удалось выйти',
+        );
+      }
+    }
+  };
+
+  // ─── Загрузка сессии ────────────────────────
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-blue-600 flex items-center justify-center text-3xl animate-pulse">
+            🚗
+          </div>
+          <p className="text-sm text-gray-500">Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Не залогинен ───────────────────────────
+  if (!user) {
+    return <AuthScreen />;
+  }
+
+  // ─── Залогинен ──────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Шапка */}
       <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">CarTracker</h1>
-          <BackupMenu
-            onImportClick={() => setShowingImport(true)}
-            onShowAlert={showAlert}
-          />
+          <div className="flex items-center gap-2">
+            <BackupMenu
+              onImportClick={() => setShowingImport(true)}
+              onShowAlert={showAlert}
+            />
+            <button
+              onClick={handleSignOut}
+              className="w-9 h-9 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors"
+              aria-label="Выйти"
+              title="Выйти"
+            >
+              <span className="text-lg">🚪</span>
+            </button>
+          </div>
         </div>
       </header>
 
