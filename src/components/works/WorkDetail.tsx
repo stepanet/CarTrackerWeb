@@ -1,4 +1,4 @@
-import type { CarWork, WorkCategory } from '../../models/CarWork';
+import type { CarWork } from '../../models/CarWork';
 import { CATEGORY_ICONS } from '../../models/CarWork';
 import type { SubItem } from '../../models/SubItem';
 import { SUB_ITEM_TYPE_ICONS, getSubItemTotal, formatQuantityDescription } from '../../models/SubItem';
