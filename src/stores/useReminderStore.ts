@@ -98,14 +98,23 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
 
       const parsed = JSON.parse(raw);
       const reminders: Reminder[] = parsed?.state?.reminders ?? [];
-      if (reminders.length === 0) return 0;
+      if (reminders.length === 0) {
+        localStorage.removeItem('cartracker-reminders');
+        return 0;
+      }
 
-      await bulkInsertReminders(reminders, userId);
+      const result = await bulkInsertReminders(reminders, userId);
 
-      // Очищаем localStorage — миграция успешна
+      // Очищаем localStorage В ЛЮБОМ СЛУЧАЕ — миграция больше не нужна
       localStorage.removeItem('cartracker-reminders');
 
-      return reminders.length;
+      if (result.skipped > 0) {
+        console.log(
+          `ℹ️ Напоминания: добавлено ${result.inserted}, пропущено дубликатов ${result.skipped}`,
+        );
+      }
+
+      return result.inserted;
     } catch (err) {
       console.error('Ошибка миграции напоминаний:', err);
       return 0;

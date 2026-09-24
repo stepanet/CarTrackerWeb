@@ -107,11 +107,33 @@ export async function deleteReminder(reminderId: string): Promise<void> {
 export async function bulkInsertReminders(
   reminders: Reminder[],
   userId: string,
-): Promise<void> {
-  if (reminders.length === 0) return;
+): Promise<{ inserted: number; skipped: number }> {
+  if (reminders.length === 0) return { inserted: 0, skipped: 0 };
 
-  const rows = reminders.map((r) => reminderToRow(r, userId));
+  // Сначала смотрим, какие id уже есть в базе у этого пользователя
+  const ids = reminders.map((r) => r.id);
+  const { data: existing, error: fetchError } = await supabase
+    .from('reminders')
+    .select('id')
+    .eq('user_id', userId)
+    .in('id', ids);
+
+  if (fetchError) throw fetchError;
+
+  const existingIds = new Set((existing ?? []).map((r) => r.id));
+  const toInsert = reminders.filter((r) => !existingIds.has(r.id));
+
+  if (toInsert.length === 0) {
+    return { inserted: 0, skipped: reminders.length };
+  }
+
+  const rows = toInsert.map((r) => reminderToRow(r, userId));
   const { error } = await supabase.from('reminders').insert(rows);
 
   if (error) throw error;
+
+  return {
+    inserted: toInsert.length,
+    skipped: reminders.length - toInsert.length,
+  };
 }

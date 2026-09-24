@@ -109,19 +109,26 @@ export const useCarWorkStore = create<CarWorkState>((set, get) => ({
 
       const parsed = JSON.parse(raw);
       const works: CarWork[] = parsed?.state?.works ?? [];
-      if (works.length === 0) return 0;
+      if (works.length === 0) {
+        localStorage.removeItem('cartracker-works');
+        return 0;
+      }
 
-      // Нормализуем subWorks и пересчитываем cost
       const normalized = works.map((w) => normalizeCost(w));
+      const result = await bulkInsertWorks(normalized, userId);
 
-      await bulkInsertWorks(normalized, userId);
-
-      // Очищаем localStorage — миграция успешна
+      // Очищаем localStorage
       localStorage.removeItem('cartracker-works');
 
-      return normalized.length;
+      if (result.skipped > 0) {
+        console.log(
+          `ℹ️ Работы: добавлено ${result.inserted}, пропущено дубликатов ${result.skipped}`,
+        );
+      }
+
+      return result.inserted;
     } catch (err) {
-      console.error('Ошибка миграции:', err);
+      console.error('Ошибка миграции работ:', err);
       return 0;
     }
   },
