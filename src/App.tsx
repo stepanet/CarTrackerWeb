@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { WorksList } from './components/works/WorksList';
 import { StatsView } from './components/stats/StatsView';
 import { RemindersList } from './components/reminders/RemindersList';
@@ -5,8 +6,8 @@ import { BackupMenu } from './components/BackupMenu';
 import { ImportDialog } from './components/ImportDialog';
 import { AuthScreen } from './components/AuthScreen';
 import { useAuth } from './hooks/useAuth';
-import { useState, useEffect } from 'react';
 import { useCarWorkStore } from './stores/useCarWorkStore';
+import { useReminderStore } from './stores/useReminderStore';
 
 type Tab = 'works' | 'stats' | 'reminders';
 
@@ -16,44 +17,93 @@ interface AlertMessage {
 }
 
 function App() {
+  // ═══════════════════════════════════════════════
+  // ХУКИ — все наверху, до любых return
+  // ═══════════════════════════════════════════════
+
   const { user, loading, signOut } = useAuth();
 
-    const loadWorks = useCarWorkStore((s) => s.loadWorks);
-  const subscribeRealtime = useCarWorkStore((s) => s.subscribeRealtime);
+  // Работы
+  const loadWorks = useCarWorkStore((s) => s.loadWorks);
+  const subscribeWorksRealtime = useCarWorkStore((s) => s.subscribeRealtime);
   const clearWorks = useCarWorkStore((s) => s.clearWorks);
-  const migrateFromLocalStorage = useCarWorkStore((s) => s.migrateFromLocalStorage);
+  const migrateWorksFromLocalStorage = useCarWorkStore(
+    (s) => s.migrateFromLocalStorage,
+  );
 
-  // Загружаем данные при входе пользователя
-    useEffect(() => {
+  // Напоминания
+  const loadReminders = useReminderStore((s) => s.loadReminders);
+  const subscribeRemindersRealtime = useReminderStore(
+    (s) => s.subscribeRealtime,
+  );
+  const clearReminders = useReminderStore((s) => s.clearReminders);
+  const migrateRemindersFromLocalStorage = useReminderStore(
+    (s) => s.migrateFromLocalStorage,
+  );
+
+  // UI-состояние
+  const [activeTab, setActiveTab] = useState<Tab>('works');
+  const [showingImport, setShowingImport] = useState(false);
+  const [alert, setAlert] = useState<AlertMessage | null>(null);
+
+  // ═══════════════════════════════════════════════
+  // ЭФФЕКТЫ
+  // ═══════════════════════════════════════════════
+
+  useEffect(() => {
     if (!user) {
       clearWorks();
+      clearReminders();
       return;
     }
 
-    // Сохраняем user в локальную переменную — TypeScript поймёт,
-    // что внутри замыкания оно уже не null
     const currentUser = user;
 
     async function bootstrap() {
       try {
-        const migrated = await migrateFromLocalStorage(currentUser.id);
-        if (migrated > 0) {
-          console.log(`✅ Мигрировано работ: ${migrated}`);
+        // 1. Миграция localStorage → Supabase (одноразово)
+        const worksMigrated = await migrateWorksFromLocalStorage(
+          currentUser.id,
+        );
+        if (worksMigrated > 0) {
+          console.log(`✅ Мигрировано работ: ${worksMigrated}`);
         }
 
+        const remindersMigrated = await migrateRemindersFromLocalStorage(
+          currentUser.id,
+        );
+        if (remindersMigrated > 0) {
+          console.log(`✅ Мигрировано напоминаний: ${remindersMigrated}`);
+        }
+
+        // 2. Загрузка из Supabase
         await loadWorks(currentUser.id);
-        subscribeRealtime(currentUser.id);
+        await loadReminders(currentUser.id);
+
+        // 3. Realtime-подписки
+        subscribeWorksRealtime(currentUser.id);
+        subscribeRemindersRealtime(currentUser.id);
       } catch (err) {
         console.error('Ошибка инициализации:', err);
       }
     }
 
     bootstrap();
-  }, [user, loadWorks, subscribeRealtime, clearWorks, migrateFromLocalStorage]);
+  }, [
+    user,
+    loadWorks,
+    loadReminders,
+    subscribeWorksRealtime,
+    subscribeRemindersRealtime,
+    clearWorks,
+    clearReminders,
+    migrateWorksFromLocalStorage,
+    migrateRemindersFromLocalStorage,
+  ]);
 
-  const [activeTab, setActiveTab] = useState<Tab>('works');
-  const [showingImport, setShowingImport] = useState(false);
-  const [alert, setAlert] = useState<AlertMessage | null>(null);
+  // ═══════════════════════════════════════════════
+  // ФУНКЦИИ (не хуки)
+  // ═══════════════════════════════════════════════
 
   const showAlert = (title: string, message: string) => {
     setAlert({ title, message });
@@ -63,6 +113,7 @@ function App() {
     if (confirm('Выйти из аккаунта?')) {
       try {
         clearWorks();
+        clearReminders();
         await signOut();
       } catch (err) {
         showAlert(
@@ -73,7 +124,10 @@ function App() {
     }
   };
 
-  // ─── Загрузка сессии ────────────────────────
+  // ═══════════════════════════════════════════════
+  // РАННИЕ RETURN — после всех хуков
+  // ═══════════════════════════════════════════════
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -87,12 +141,14 @@ function App() {
     );
   }
 
-  // ─── Не залогинен ───────────────────────────
   if (!user) {
     return <AuthScreen />;
   }
 
-  // ─── Залогинен ──────────────────────────────
+  // ═══════════════════════════════════════════════
+  // ОСНОВНОЙ RETURN
+  // ═══════════════════════════════════════════════
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Шапка */}
@@ -166,6 +222,8 @@ function App() {
   );
 }
 
+// ─── TabButton ────────────────────────────────
+
 interface TabButtonProps {
   active: boolean;
   onClick: () => void;
@@ -187,7 +245,7 @@ function TabButton({ active, onClick, icon, label }: TabButtonProps) {
   );
 }
 
-// ─── Alert ────────────────────────────────────
+// ─── AlertDialog ──────────────────────────────
 
 interface AlertDialogProps {
   title: string;

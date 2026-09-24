@@ -34,3 +34,25 @@ export function subscribeToWorkChanges(
 
   return channel;
 }
+
+/**
+ * Подписка на изменения таблицы reminders.
+ */
+export function subscribeToReminderChanges(
+  userId: string,
+  onChange: () => void,
+): RealtimeChannel {
+  return supabase
+    .channel('reminders-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'reminders',
+        filter: `user_id=eq.${userId}`,
+      },
+      () => onChange(),
+    )
+    .subscribe();
+}

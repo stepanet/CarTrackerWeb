@@ -1,70 +1,218 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { Reminder, ReminderStatus } from '../models/Reminder';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import {
+  fetchAllReminders,
+  createReminder as apiCreateReminder,
+  updateReminder as apiUpdateReminder,
+  deleteReminder as apiDeleteReminder,
+  bulkInsertReminders,
+} from '../lib/remindersApi';
+import { subscribeToReminderChanges } from '../lib/realtimeHelpers';
 
 interface ReminderState {
   reminders: Reminder[];
 
+  // Состояние
+  isLoading: boolean;
+  error: string | null;
+  userId: string | null;
+  realtimeChannel: RealtimeChannel | null;
+
+  // Загрузка / синхронизация
+  loadReminders: (userId: string) => Promise<void>;
+  subscribeRealtime: (userId: string) => void;
+  unsubscribeRealtime: () => void;
+  clearReminders: () => void;
+
+  // Миграция
+  migrateFromLocalStorage: (userId: string) => Promise<number>;
+
   // CRUD
-  add: (reminder: Reminder) => void;
-  update: (reminder: Reminder) => void;
-  remove: (id: string) => void;
-  replaceAll: (reminders: Reminder[]) => void;
+  add: (reminder: Reminder) => Promise<void>;
+  update: (reminder: Reminder) => Promise<void>;
+  remove: (id: string) => Promise<void>;
 
   // Действия
-  markDone: (id: string, currentMileage: number) => void;
-  toggleEnabled: (id: string) => void;
+  markDone: (id: string, currentMileage: number) => Promise<void>;
+  toggleEnabled: (id: string) => Promise<void>;
 }
 
-export const useReminderStore = create<ReminderState>()(
-  persist(
-    (set) => ({
-      reminders: [],
+export const useReminderStore = create<ReminderState>((set, get) => ({
+  reminders: [],
+  isLoading: false,
+  error: null,
+  userId: null,
+  realtimeChannel: null,
 
-      add: (reminder) =>
-        set((state) => ({
-          reminders: [...state.reminders, reminder],
-        })),
+  // ─── Загрузка ───────────────────────────────
 
-      update: (reminder) =>
+  loadReminders: async (userId: string) => {
+    set({ isLoading: true, error: null, userId });
+    try {
+      const reminders = await fetchAllReminders(userId);
+      set({ reminders, isLoading: false });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Ошибка загрузки напоминаний';
+      set({ error: message, isLoading: false });
+      throw err;
+    }
+  },
+
+  subscribeRealtime: (userId: string) => {
+    // Отписываемся от старой подписки, если есть
+    get().unsubscribeRealtime();
+
+    const channel = subscribeToReminderChanges(userId, async () => {
+      try {
+        const reminders = await fetchAllReminders(userId);
+        set({ reminders });
+      } catch (err) {
+        console.error('Ошибка realtime-синхронизации напоминаний:', err);
+      }
+    });
+
+    set({ realtimeChannel: channel });
+  },
+
+  unsubscribeRealtime: () => {
+    const { realtimeChannel } = get();
+    if (realtimeChannel) {
+      realtimeChannel.unsubscribe();
+      set({ realtimeChannel: null });
+    }
+  },
+
+  clearReminders: () => {
+    get().unsubscribeRealtime();
+    set({ reminders: [], userId: null, error: null });
+  },
+
+  // ─── Миграция ───────────────────────────────
+
+  migrateFromLocalStorage: async (userId: string) => {
+    try {
+      const raw = localStorage.getItem('cartracker-reminders');
+      if (!raw) return 0;
+
+      const parsed = JSON.parse(raw);
+      const reminders: Reminder[] = parsed?.state?.reminders ?? [];
+      if (reminders.length === 0) return 0;
+
+      await bulkInsertReminders(reminders, userId);
+
+      // Очищаем localStorage — миграция успешна
+      localStorage.removeItem('cartracker-reminders');
+
+      return reminders.length;
+    } catch (err) {
+      console.error('Ошибка миграции напоминаний:', err);
+      return 0;
+    }
+  },
+
+  // ─── CRUD ───────────────────────────────────
+
+  add: async (reminder) => {
+    const { userId } = get();
+    if (!userId) throw new Error('Не авторизован');
+
+    // 1. Оптимистично добавляем
+    set((state) => ({
+      reminders: [...state.reminders, reminder],
+    }));
+
+    // 2. Сохраняем в Supabase
+    try {
+      await apiCreateReminder(reminder, userId);
+    } catch (err) {
+      // Откатываем
+      set((state) => ({
+        reminders: state.reminders.filter((r) => r.id !== reminder.id),
+      }));
+      throw err;
+    }
+  },
+
+  update: async (reminder) => {
+    const { userId } = get();
+    if (!userId) throw new Error('Не авторизован');
+
+    const previous = get().reminders.find((r) => r.id === reminder.id);
+
+    // 1. Оптимистично обновляем
+    set((state) => ({
+      reminders: state.reminders.map((r) =>
+        r.id === reminder.id ? reminder : r,
+      ),
+    }));
+
+    // 2. Сохраняем в Supabase
+    try {
+      await apiUpdateReminder(reminder, userId);
+    } catch (err) {
+      // Откатываем
+      if (previous) {
         set((state) => ({
           reminders: state.reminders.map((r) =>
-            r.id === reminder.id ? reminder : r,
+            r.id === previous.id ? previous : r,
           ),
-        })),
+        }));
+      }
+      throw err;
+    }
+  },
 
-      remove: (id) =>
+  remove: async (id) => {
+    const previous = get().reminders.find((r) => r.id === id);
+
+    // 1. Оптимистично удаляем
+    set((state) => ({
+      reminders: state.reminders.filter((r) => r.id !== id),
+    }));
+
+    // 2. Удаляем из Supabase
+    try {
+      await apiDeleteReminder(id);
+    } catch (err) {
+      // Откатываем
+      if (previous) {
         set((state) => ({
-          reminders: state.reminders.filter((r) => r.id !== id),
-        })),
+          reminders: [...state.reminders, previous],
+        }));
+      }
+      throw err;
+    }
+  },
 
-      replaceAll: (reminders) => set({ reminders }),
+  // ─── Действия ───────────────────────────────
 
-      markDone: (id, currentMileage) =>
-        set((state) => ({
-          reminders: state.reminders.map((r) =>
-            r.id === id
-              ? {
-                  ...r,
-                  lastDate: new Date().toISOString(),
-                  lastMileage: currentMileage,
-                }
-              : r,
-          ),
-        })),
+  markDone: async (id, currentMileage) => {
+    const reminder = get().reminders.find((r) => r.id === id);
+    if (!reminder) return;
 
-      toggleEnabled: (id) =>
-        set((state) => ({
-          reminders: state.reminders.map((r) =>
-            r.id === id ? { ...r, isEnabled: !r.isEnabled } : r,
-          ),
-        })),
-    }),
-    {
-      name: 'cartracker-reminders',
-    },
-  ),
-);
+    const updated: Reminder = {
+      ...reminder,
+      lastDate: new Date().toISOString(),
+      lastMileage: currentMileage,
+    };
+
+    await get().update(updated);
+  },
+
+  toggleEnabled: async (id) => {
+    const reminder = get().reminders.find((r) => r.id === id);
+    if (!reminder) return;
+
+    const updated: Reminder = {
+      ...reminder,
+      isEnabled: !reminder.isEnabled,
+    };
+
+    await get().update(updated);
+  },
+}));
 
 // ═══════════════════════════════════════════════
 // Логика статусов — вынесена в отдельный модуль,
@@ -92,7 +240,6 @@ export function getStatus(
 ): ReminderStatus {
   if (!reminder.isEnabled) return 'disabled';
 
-  // По дате
   const nextDate = getNextDate(reminder);
   if (nextDate) {
     const daysLeft = Math.floor(
@@ -102,7 +249,6 @@ export function getStatus(
     if (daysLeft < 30) return 'soon';
   }
 
-  // По пробегу
   const nextMileage = getNextMileage(reminder);
   if (nextMileage !== null) {
     const kmLeft = nextMileage - currentMileage;
