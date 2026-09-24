@@ -192,19 +192,34 @@ export async function deleteWork(workId: string): Promise<void> {
 export async function bulkInsertWorks(
   works: CarWork[],
   userId: string,
-): Promise<void> {
-  if (works.length === 0) return;
+): Promise<{ inserted: number; skipped: number }> {
+  if (works.length === 0) return { inserted: 0, skipped: 0 };
 
-  // 1. Вставляем все работы
-  const workRows = works.map((w) => carWorkToRow(w, userId));
+  // Смотрим, какие id работ уже есть у пользователя
+  const ids = works.map((w) => w.id);
+  const { data: existing, error: fetchError } = await supabase
+    .from('works')
+    .select('id')
+    .eq('user_id', userId)
+    .in('id', ids);
+
+  if (fetchError) throw fetchError;
+
+  const existingIds = new Set((existing ?? []).map((r) => r.id));
+  const toInsert = works.filter((w) => !existingIds.has(w.id));
+
+  if (toInsert.length === 0) {
+    return { inserted: 0, skipped: works.length };
+  }
+
+  const workRows = toInsert.map((w) => carWorkToRow(w, userId));
   const { error: workError } = await supabase
     .from('works')
     .insert(workRows);
 
   if (workError) throw workError;
 
-  // 2. Вставляем все подработы
-  const allSubRows = works.flatMap((w) =>
+  const allSubRows = toInsert.flatMap((w) =>
     w.subWorks.map((item) => subItemToRow(item, w.id)),
   );
 
@@ -215,4 +230,9 @@ export async function bulkInsertWorks(
 
     if (subError) throw subError;
   }
+
+  return {
+    inserted: toInsert.length,
+    skipped: works.length - toInsert.length,
+  };
 }
