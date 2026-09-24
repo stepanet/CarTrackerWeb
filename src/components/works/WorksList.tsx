@@ -4,6 +4,7 @@ import { ALL_CATEGORIES, CATEGORY_ICONS } from '../../models/CarWork';
 import type { CarWork, WorkCategory } from '../../models/CarWork';
 import { WorkRow } from './WorkRow';
 import { WorkForm } from './WorkForm';
+import { WorkDetail } from './WorkDetail';
 
 export function WorksList() {
   const works = useCarWorkStore((s) => s.works);
@@ -15,6 +16,7 @@ export function WorksList() {
   const [selectedCategory, setSelectedCategory] = useState<WorkCategory | null>(null);
   const [showingForm, setShowingForm] = useState(false);
   const [editingWork, setEditingWork] = useState<CarWork | null>(null);
+  const [viewingWork, setViewingWork] = useState<CarWork | null>(null);
 
   // Статистика
   const totalCost = useMemo(
@@ -128,7 +130,7 @@ export function WorksList() {
               <WorkRow
                 key={work.id}
                 work={work}
-                onEdit={openEditForm}
+                onEdit={() => setViewingWork(work)}
                 onDelete={remove}
               />
             ))}
@@ -145,7 +147,25 @@ export function WorksList() {
         +
       </button>
 
-      {/* Форма */}
+            {/* Детальный экран */}
+      {viewingWork && (
+        <WorkDetail
+          work={viewingWork}
+          onClose={() => setViewingWork(null)}
+          onEdit={() => {
+            const workToEdit = viewingWork;
+            setViewingWork(null);
+            setEditingWork(workToEdit);
+            setShowingForm(true);
+          }}
+          onDelete={() => {
+            remove(viewingWork.id);
+            setViewingWork(null);
+          }}
+        />
+      )}
+
+      {/* Форма редактирования */}
       {showingForm && (
         <WorkForm
           work={editingWork}
