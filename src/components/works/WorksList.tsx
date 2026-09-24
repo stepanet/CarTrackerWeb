@@ -72,9 +72,9 @@ export function WorksList() {
       <div className="space-y-4 pb-4">
         {/* Шапка со статистикой */}
         <div className="grid grid-cols-3 gap-2">
-          <StatCard label="Всего1" value={`${formatMoney(totalCost)} ₽`} icon="💰" />
-          <StatCard label="За год1" value={`${formatMoney(totalThisYear)} ₽`} icon="📅" />
-          <StatCard label="Записей1" value={String(works.length)} icon="📋" />
+          <StatCard label="Всего" value={`${formatMoney(totalCost)} ₽`} icon="💰" />
+          <StatCard label="За год" value={`${formatMoney(totalThisYear)} ₽`} icon="📅" />
+          <StatCard label="Записей" value={String(works.length)} icon="📋" />
         </div>
 
         {/* Поиск */}
