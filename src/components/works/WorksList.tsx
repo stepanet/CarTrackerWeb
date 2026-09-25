@@ -5,7 +5,16 @@ import type { CarWork, WorkCategory } from '../../models/CarWork';
 import { WorkRow } from './WorkRow';
 import { WorkForm } from './WorkForm';
 import { WorkDetail } from './WorkDetail';
-import { Car, Search, X } from 'lucide-react';
+import {
+  Car,
+  Search,
+  X,
+  Banknote,
+  Calendar,
+  ListTodo,
+  Loader2,
+  Plus,
+} from 'lucide-react';
 
 export function WorksList() {
   const works = useCarWorkStore((s) => s.works);
@@ -22,6 +31,7 @@ export function WorksList() {
   const [viewingWork, setViewingWork] = useState<CarWork | null>(null);
   const [savingError, setSavingError] = useState<string | null>(null);
 
+  // Статистика
   const totalCost = useMemo(
     () => works.filter((w) => w.isDone).reduce((s, w) => s + w.cost, 0),
     [works],
@@ -34,6 +44,7 @@ export function WorksList() {
       .reduce((s, w) => s + w.cost, 0);
   }, [works]);
 
+  // Фильтрация
   const filteredWorks = useMemo(() => {
     return works.filter((w) => {
       const matchesSearch =
@@ -55,7 +66,8 @@ export function WorksList() {
       }
       closeForm();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Не удалось сохранить';
+      const message =
+        err instanceof Error ? err.message : 'Не удалось сохранить';
       setSavingError(message);
     }
   };
@@ -66,7 +78,8 @@ export function WorksList() {
       await remove(work.id);
       setViewingWork(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Не удалось удалить';
+      const message =
+        err instanceof Error ? err.message : 'Не удалось удалить';
       setSavingError(message);
     }
   };
@@ -93,19 +106,22 @@ export function WorksList() {
   return (
     <>
       <div className="space-y-4 pb-4">
+        {/* Индикатор загрузки */}
         {isLoading && (
           <div className="bg-blue-50 border border-blue-200 text-blue-700 text-sm rounded-lg p-3 flex items-center gap-2">
-            <span className="animate-spin">⏳</span>
+            <Loader2 className="w-4 h-4 animate-spin" />
             <span>Загрузка данных из облака...</span>
           </div>
         )}
 
+        {/* Ошибка загрузки */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
             {error}
           </div>
         )}
 
+        {/* Ошибка сохранения */}
         {savingError && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 flex justify-between items-center">
             <span>{savingError}</span>
@@ -120,9 +136,24 @@ export function WorksList() {
 
         {/* Шапка со статистикой */}
         <div className="grid grid-cols-3 gap-2">
-          <StatCard label="Всего" value={`${formatMoney(totalCost)} ₽`} icon="💰" />
-          <StatCard label="За год" value={`${formatMoney(totalThisYear)} ₽`} icon="📅" />
-          <StatCard label="Записей" value={String(works.length)} icon="📋" />
+          <StatCard
+            label="Всего"
+            value={`${formatMoney(totalCost)} ₽`}
+            icon={<Banknote className="w-5 h-5" />}
+            iconColor="text-blue-500"
+          />
+          <StatCard
+            label="За год"
+            value={`${formatMoney(totalThisYear)} ₽`}
+            icon={<Calendar className="w-5 h-5" />}
+            iconColor="text-green-500"
+          />
+          <StatCard
+            label="Записей"
+            value={String(works.length)}
+            icon={<ListTodo className="w-5 h-5" />}
+            iconColor="text-purple-500"
+          />
         </div>
 
         {/* Поиск */}
@@ -195,10 +226,10 @@ export function WorksList() {
       {/* Плавающая кнопка "+" */}
       <button
         onClick={openAddForm}
-        className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-blue-600 text-white text-3xl shadow-lg flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-transform z-10"
+        className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-transform z-10"
         aria-label="Добавить работу"
       >
-        +
+        <Plus className="w-7 h-7" strokeWidth={2.5} />
       </button>
 
       {/* Детальный экран */}
@@ -223,35 +254,33 @@ export function WorksList() {
   );
 }
 
-function StatCard({
-  label,
-  value,
-  icon,
-}: {
+// ─── Вспомогательные компоненты ──────────────────
+
+interface StatCardProps {
   label: string;
   value: string;
-  icon: string;
-}) {
+  icon: React.ReactNode;
+  iconColor?: string;
+}
+
+function StatCard({ label, value, icon, iconColor }: StatCardProps) {
   return (
     <div className="bg-white rounded-xl p-3 shadow-sm">
-      <div className="text-lg mb-1">{icon}</div>
+      <div className={`mb-1 ${iconColor ?? 'text-gray-500'}`}>{icon}</div>
       <p className="font-semibold text-gray-900 text-sm truncate">{value}</p>
       <p className="text-xs text-gray-500">{label}</p>
     </div>
   );
 }
 
-function FilterChip({
-  label,
-  icon,
-  active,
-  onClick,
-}: {
+interface FilterChipProps {
   label: string;
   icon?: React.ReactNode;
   active: boolean;
   onClick: () => void;
-}) {
+}
+
+function FilterChip({ label, icon, active, onClick }: FilterChipProps) {
   return (
     <button
       onClick={onClick}
@@ -267,15 +296,13 @@ function FilterChip({
   );
 }
 
-function EmptyState({
-  hasWorks,
-  isLoading,
-  onAdd,
-}: {
+interface EmptyStateProps {
   hasWorks: boolean;
   isLoading: boolean;
   onAdd: () => void;
-}) {
+}
+
+function EmptyState({ hasWorks, isLoading, onAdd }: EmptyStateProps) {
   if (isLoading) return null;
 
   return (
