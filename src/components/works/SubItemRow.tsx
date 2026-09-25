@@ -4,6 +4,7 @@ import {
   getSubItemTotal,
   formatQuantityDescription,
 } from '../../models/SubItem';
+import { Pencil, Trash2 } from 'lucide-react';
 
 interface SubItemRowProps {
   item: SubItem;
@@ -13,18 +14,19 @@ interface SubItemRowProps {
 
 export function SubItemRow({ item, onEdit, onDelete }: SubItemRowProps) {
   const isWork = item.type === 'work';
+  const TypeIcon = SUB_ITEM_TYPE_ICONS[item.type];
 
   return (
     <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
       {/* Иконка типа */}
       <span
-        className={`w-7 h-7 rounded-full flex items-center justify-center text-sm shrink-0 ${
+        className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
           isWork
             ? 'bg-blue-100 text-blue-600'
             : 'bg-orange-100 text-orange-600'
         }`}
       >
-        {SUB_ITEM_TYPE_ICONS[item.type]}
+        <TypeIcon className="w-4 h-4" />
       </span>
 
       {/* Название + заметка */}
@@ -38,7 +40,10 @@ export function SubItemRow({ item, onEdit, onDelete }: SubItemRowProps) {
       {/* Стоимость + количество */}
       <div className="text-right shrink-0">
         <p className="text-sm font-medium text-gray-900">
-          {getSubItemTotal(item).toLocaleString('ru-RU')} ₽
+          {getSubItemTotal(item).toLocaleString('ru-RU', {
+            maximumFractionDigits: 0,
+          })}{' '}
+          ₽
         </p>
         {item.quantity !== 1 && (
           <p className="text-xs text-gray-500">
@@ -55,7 +60,7 @@ export function SubItemRow({ item, onEdit, onDelete }: SubItemRowProps) {
           className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-blue-600"
           title="Редактировать"
         >
-          ✏️
+          <Pencil className="w-4 h-4" />
         </button>
         <button
           type="button"
@@ -63,7 +68,7 @@ export function SubItemRow({ item, onEdit, onDelete }: SubItemRowProps) {
           className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-600"
           title="Удалить"
         >
-          🗑
+          <Trash2 className="w-4 h-4" />
         </button>
       </div>
     </div>

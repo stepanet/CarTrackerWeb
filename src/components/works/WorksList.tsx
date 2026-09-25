@@ -5,6 +5,7 @@ import type { CarWork, WorkCategory } from '../../models/CarWork';
 import { WorkRow } from './WorkRow';
 import { WorkForm } from './WorkForm';
 import { WorkDetail } from './WorkDetail';
+import { Car, Search, X } from 'lucide-react';
 
 export function WorksList() {
   const works = useCarWorkStore((s) => s.works);
@@ -21,7 +22,6 @@ export function WorksList() {
   const [viewingWork, setViewingWork] = useState<CarWork | null>(null);
   const [savingError, setSavingError] = useState<string | null>(null);
 
-  // Статистика
   const totalCost = useMemo(
     () => works.filter((w) => w.isDone).reduce((s, w) => s + w.cost, 0),
     [works],
@@ -34,7 +34,6 @@ export function WorksList() {
       .reduce((s, w) => s + w.cost, 0);
   }, [works]);
 
-  // Фильтрация
   const filteredWorks = useMemo(() => {
     return works.filter((w) => {
       const matchesSearch =
@@ -56,8 +55,7 @@ export function WorksList() {
       }
       closeForm();
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Не удалось сохранить';
+      const message = err instanceof Error ? err.message : 'Не удалось сохранить';
       setSavingError(message);
     }
   };
@@ -68,8 +66,7 @@ export function WorksList() {
       await remove(work.id);
       setViewingWork(null);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Не удалось удалить';
+      const message = err instanceof Error ? err.message : 'Не удалось удалить';
       setSavingError(message);
     }
   };
@@ -96,7 +93,6 @@ export function WorksList() {
   return (
     <>
       <div className="space-y-4 pb-4">
-        {/* Индикатор загрузки */}
         {isLoading && (
           <div className="bg-blue-50 border border-blue-200 text-blue-700 text-sm rounded-lg p-3 flex items-center gap-2">
             <span className="animate-spin">⏳</span>
@@ -104,22 +100,20 @@ export function WorksList() {
           </div>
         )}
 
-        {/* Ошибка загрузки */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
-            ⚠️ {error}
+            {error}
           </div>
         )}
 
-        {/* Ошибка сохранения */}
         {savingError && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 flex justify-between items-center">
-            <span>⚠️ {savingError}</span>
+            <span>{savingError}</span>
             <button
               onClick={() => setSavingError(null)}
               className="text-red-500 hover:text-red-800"
             >
-              ✕
+              <X className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -133,9 +127,7 @@ export function WorksList() {
 
         {/* Поиск */}
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-            🔍
-          </span>
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             value={searchText}
@@ -148,7 +140,7 @@ export function WorksList() {
               onClick={() => setSearchText('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
             >
-              ✕
+              <X className="w-4 h-4" />
             </button>
           )}
         </div>
@@ -160,16 +152,20 @@ export function WorksList() {
             active={selectedCategory === null}
             onClick={() => setSelectedCategory(null)}
           />
-          {ALL_CATEGORIES.map((cat) => (
-            <FilterChip
-              key={cat}
-              label={`${CATEGORY_ICONS[cat]} ${cat}`}
-              active={selectedCategory === cat}
-              onClick={() =>
-                setSelectedCategory(selectedCategory === cat ? null : cat)
-              }
-            />
-          ))}
+          {ALL_CATEGORIES.map((cat) => {
+            const Icon = CATEGORY_ICONS[cat];
+            return (
+              <FilterChip
+                key={cat}
+                label={cat}
+                icon={<Icon className="w-3.5 h-3.5" />}
+                active={selectedCategory === cat}
+                onClick={() =>
+                  setSelectedCategory(selectedCategory === cat ? null : cat)
+                }
+              />
+            );
+          })}
         </div>
 
         {/* Список работ */}
@@ -227,9 +223,15 @@ export function WorksList() {
   );
 }
 
-// ─── Вспомогательные компоненты ──────────────────
-
-function StatCard({ label, value, icon }: { label: string; value: string; icon: string }) {
+function StatCard({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon: string;
+}) {
   return (
     <div className="bg-white rounded-xl p-3 shadow-sm">
       <div className="text-lg mb-1">{icon}</div>
@@ -241,22 +243,25 @@ function StatCard({ label, value, icon }: { label: string; value: string; icon: 
 
 function FilterChip({
   label,
+  icon,
   active,
   onClick,
 }: {
   label: string;
+  icon?: React.ReactNode;
   active: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
+      className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors flex items-center gap-1.5 ${
         active
           ? 'bg-blue-600 text-white'
           : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
       }`}
     >
+      {icon}
       {label}
     </button>
   );
@@ -275,7 +280,7 @@ function EmptyState({
 
   return (
     <div className="bg-white rounded-xl p-8 text-center shadow-sm">
-      <p className="text-5xl mb-3">🚗</p>
+      <Car className="w-16 h-16 mx-auto mb-3 text-gray-400" />
       <p className="text-gray-600 font-medium mb-1">
         {hasWorks ? 'Ничего не найдено' : 'Пока нет записей'}
       </p>

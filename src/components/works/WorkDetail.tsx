@@ -1,7 +1,12 @@
 import type { CarWork } from '../../models/CarWork';
 import { CATEGORY_ICONS } from '../../models/CarWork';
 import type { SubItem } from '../../models/SubItem';
-import { SUB_ITEM_TYPE_ICONS, getSubItemTotal, formatQuantityDescription } from '../../models/SubItem';
+import {
+  SUB_ITEM_TYPE_ICONS,
+  getSubItemTotal,
+  formatQuantityDescription,
+} from '../../models/SubItem';
+import { Wrench, Bolt, Pencil, Trash2, ChevronLeft } from 'lucide-react';
 
 interface WorkDetailProps {
   work: CarWork;
@@ -35,34 +40,36 @@ export function WorkDetail({ work, onClose, onEdit, onDelete }: WorkDetailProps)
     }
   };
 
+  const CategoryIcon = CATEGORY_ICONS[work.category];
+
   return (
     <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
       {/* Шапка */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10 shrink-0">
         <button
           onClick={onClose}
-          className="text-blue-600 font-medium flex items-center gap-1"
+          className="text-blue-600 font-medium flex items-center gap-0.5"
         >
-          <span className="text-lg leading-none">‹</span>
-          <span>Назад</span>
+          <ChevronLeft className="w-5 h-5" />
+          Назад
         </button>
         <h1 className="font-semibold text-gray-900 truncate max-w-[180px]">
           {work.title}
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             onClick={onEdit}
-            className="text-blue-600 text-lg p-1"
+            className="text-blue-600 p-1"
             title="Редактировать"
           >
-            ✏️
+            <Pencil className="w-5 h-5" />
           </button>
           <button
             onClick={handleDelete}
-            className="text-red-500 text-lg p-1"
+            className="text-red-500 p-1"
             title="Удалить"
           >
-            🗑
+            <Trash2 className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -72,8 +79,8 @@ export function WorkDetail({ work, onClose, onEdit, onDelete }: WorkDetailProps)
         {/* Основная информация */}
         <div className="bg-white rounded-xl p-4 shadow-sm space-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-2xl shrink-0">
-              {CATEGORY_ICONS[work.category]}
+            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+              <CategoryIcon className="w-6 h-6 text-blue-600" />
             </div>
             <div className="min-w-0">
               <p className="font-semibold text-gray-900">{work.title}</p>
@@ -108,9 +115,10 @@ export function WorkDetail({ work, onClose, onEdit, onDelete }: WorkDetailProps)
         {/* Секция «Работы» */}
         {workItems.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-blue-600" />
               <h2 className="font-semibold text-gray-900">
-                🔧 Работы ({workItems.length})
+                Работы ({workItems.length})
               </h2>
             </div>
             <div className="divide-y divide-gray-100">
@@ -132,9 +140,10 @@ export function WorkDetail({ work, onClose, onEdit, onDelete }: WorkDetailProps)
         {/* Секция «Детали» */}
         {partItems.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+              <Bolt className="w-4 h-4 text-orange-600" />
               <h2 className="font-semibold text-gray-900">
-                🔩 Детали ({partItems.length})
+                Детали ({partItems.length})
               </h2>
             </div>
             <div className="divide-y divide-gray-100">
@@ -180,19 +189,18 @@ export function WorkDetail({ work, onClose, onEdit, onDelete }: WorkDetailProps)
           </div>
         )}
 
-        {/* Кнопка редактирования (большая, внизу) */}
+        {/* Кнопка редактирования */}
         <button
           onClick={onEdit}
-          className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+          className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
         >
-          ✏️ Редактировать
+          <Pencil className="w-4 h-4" />
+          Редактировать
         </button>
       </div>
     </div>
   );
 }
-
-// ─── Строка подзаписи (только для чтения) ───
 
 interface SubItemDetailRowProps {
   item: SubItem;
@@ -200,15 +208,16 @@ interface SubItemDetailRowProps {
 
 function SubItemDetailRow({ item }: SubItemDetailRowProps) {
   const isWork = item.type === 'work';
+  const TypeIcon = SUB_ITEM_TYPE_ICONS[item.type];
 
   return (
     <div className="px-4 py-3 flex items-center gap-3">
       <span
-        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${
+        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
           isWork ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'
         }`}
       >
-        {SUB_ITEM_TYPE_ICONS[item.type]}
+        <TypeIcon className="w-4 h-4" />
       </span>
 
       <div className="flex-1 min-w-0">

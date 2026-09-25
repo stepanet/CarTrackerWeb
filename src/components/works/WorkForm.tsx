@@ -3,11 +3,12 @@ import type { CarWork, WorkCategory } from '../../models/CarWork';
 import { ALL_CATEGORIES, CATEGORY_ICONS, createCarWork } from '../../models/CarWork';
 import type { SubItem, SubItemType } from '../../models/SubItem';
 import { getSubItemTotal } from '../../models/SubItem';
+import { Wrench, Bolt, Plus } from 'lucide-react';
 import { SubItemForm } from './SubItemForm';
 import { SubItemRow } from './SubItemRow';
 
 interface WorkFormProps {
-  work: CarWork | null;      // null = создание, объект = редактирование
+  work: CarWork | null;
   onSave: (work: CarWork) => void;
   onCancel: () => void;
 }
@@ -21,7 +22,6 @@ export function WorkForm({ work, onSave, onCancel }: WorkFormProps) {
   const [note, setNote] = useState('');
   const [isDone, setIsDone] = useState(true);
 
-  // Подзаписи
   const [subWorks, setSubWorks] = useState<SubItem[]>([]);
   const [editingSubItem, setEditingSubItem] = useState<SubItem | null>(null);
   const [showingSubItemForm, setShowingSubItemForm] = useState(false);
@@ -30,7 +30,6 @@ export function WorkForm({ work, onSave, onCancel }: WorkFormProps) {
   const isEditing = work !== null;
   const isValid = title.trim().length > 0;
 
-  // Подзаписи — вычисляемые
   const hasSubItems = subWorks.length > 0;
   const subItemsTotal = subWorks.reduce(
     (sum, item) => sum + getSubItemTotal(item),
@@ -39,7 +38,6 @@ export function WorkForm({ work, onSave, onCancel }: WorkFormProps) {
   const workItems = subWorks.filter((item) => item.type === 'work');
   const partItems = subWorks.filter((item) => item.type === 'part');
 
-  // Заполняем форму при редактировании
   useEffect(() => {
     if (work) {
       setTitle(work.title);
@@ -62,9 +60,6 @@ export function WorkForm({ work, onSave, onCancel }: WorkFormProps) {
 
     const dateObj = date ? new Date(date + 'T12:00:00') : new Date();
     const mileageNum = parseInt(mileage) || 0;
-
-    // Если есть подработы — стоимость = сумма подработ.
-    // Если нет — берём ручной ввод.
     const costNum = hasSubItems
       ? subItemsTotal
       : parseFloat(cost.replace(',', '.')) || 0;
@@ -97,8 +92,6 @@ export function WorkForm({ work, onSave, onCancel }: WorkFormProps) {
     }
   };
 
-  // ─── Подзаписи ─────────────────────────────
-
   const openAddSubItem = (type: SubItemType) => {
     setNewSubItemType(type);
     setEditingSubItem(null);
@@ -112,15 +105,12 @@ export function WorkForm({ work, onSave, onCancel }: WorkFormProps) {
 
   const saveSubItem = (item: SubItem) => {
     if (editingSubItem) {
-      // Обновление
       setSubWorks((prev) =>
         prev.map((si) => (si.id === item.id ? item : si)),
       );
     } else {
-      // Добавление
       setSubWorks((prev) => [...prev, item]);
     }
-    // Сбрасываем ручной cost, если есть подработы
     if (subWorks.length + (editingSubItem ? 0 : 1) > 0) {
       setCost('');
     }
@@ -171,7 +161,6 @@ export function WorkForm({ work, onSave, onCancel }: WorkFormProps) {
             </button>
           </div>
 
-          {/* Форма */}
           <form id="work-form" onSubmit={handleSubmit} className="p-4 space-y-4">
             {/* Название */}
             <div>
@@ -190,25 +179,28 @@ export function WorkForm({ work, onSave, onCancel }: WorkFormProps) {
 
             {/* Категория */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Категория
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {ALL_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategory(cat)}
-                    className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-colors ${
-                      category === cat
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <span className="text-xl mb-1">{CATEGORY_ICONS[cat]}</span>
-                    <span className="text-xs font-medium">{cat}</span>
-                  </button>
-                ))}
+                {ALL_CATEGORIES.map((cat) => {
+                  const Icon = CATEGORY_ICONS[cat];
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setCategory(cat)}
+                      className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-colors gap-1 ${
+                        category === cat
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="text-xs font-medium">{cat}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -244,18 +236,20 @@ export function WorkForm({ work, onSave, onCancel }: WorkFormProps) {
               </div>
             </div>
 
-            {/* ───── Секция «Работы» ───── */}
+            {/* Секция «Работы» */}
             <div className="border-t border-gray-200 pt-4">
               <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-gray-700">
-                  🔧 Работы
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                  <Wrench className="w-4 h-4 text-blue-600" />
+                  Работы
                 </label>
                 <button
                   type="button"
                   onClick={() => openAddSubItem('work')}
-                  className="text-sm text-blue-600 font-medium hover:text-blue-800"
+                  className="text-sm text-blue-600 font-medium hover:text-blue-800 flex items-center gap-1"
                 >
-                  + Добавить
+                  <Plus className="w-4 h-4" />
+                  Добавить
                 </button>
               </div>
 
@@ -286,18 +280,20 @@ export function WorkForm({ work, onSave, onCancel }: WorkFormProps) {
               )}
             </div>
 
-            {/* ───── Секция «Детали» ───── */}
+            {/* Секция «Детали» */}
             <div className="border-t border-gray-200 pt-4">
               <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-gray-700">
-                  🔩 Детали
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                  <Bolt className="w-4 h-4 text-orange-600" />
+                  Детали
                 </label>
                 <button
                   type="button"
                   onClick={() => openAddSubItem('part')}
-                  className="text-sm text-blue-600 font-medium hover:text-blue-800"
+                  className="text-sm text-blue-600 font-medium hover:text-blue-800 flex items-center gap-1"
                 >
-                  + Добавить
+                  <Plus className="w-4 h-4" />
+                  Добавить
                 </button>
               </div>
 
@@ -328,7 +324,7 @@ export function WorkForm({ work, onSave, onCancel }: WorkFormProps) {
               )}
             </div>
 
-            {/* ───── Стоимость ───── */}
+            {/* Стоимость */}
             <div className="border-t border-gray-200 pt-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Стоимость
@@ -339,7 +335,10 @@ export function WorkForm({ work, onSave, onCancel }: WorkFormProps) {
                     Автоматически
                   </span>
                   <span className="text-lg font-bold text-blue-700">
-                    {subItemsTotal.toLocaleString('ru-RU')} ₽
+                    {subItemsTotal.toLocaleString('ru-RU', {
+                      maximumFractionDigits: 0,
+                    })}{' '}
+                    ₽
                   </span>
                 </div>
               ) : (
@@ -398,7 +397,7 @@ export function WorkForm({ work, onSave, onCancel }: WorkFormProps) {
         </div>
       </div>
 
-      {/* Модальная форма подзаписи — поверх формы работы */}
+      {/* Модальная форма подзаписи */}
       {showingSubItemForm && (
         <SubItemForm
           item={editingSubItem}

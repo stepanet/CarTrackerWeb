@@ -1,3 +1,5 @@
+import { Wrench, Package, type LucideIcon } from 'lucide-react';
+
 /**
  * Тип подзаписи: работа (услуга) или деталь (запчасть).
  * Значения — латиница, точно совпадают с SubItemType в Swift.
@@ -13,18 +15,17 @@ export const SUB_ITEM_TYPE_LABELS: Record<SubItemType, string> = {
   part: 'Деталь',
 };
 
-/** Иконки для веба (эмодзи вместо SF Symbols) */
-export const SUB_ITEM_TYPE_ICONS: Record<SubItemType, string> = {
-  work: '🔧',
-  part: '📦',
+/** Иконки-компоненты Lucide */
+export const SUB_ITEM_TYPE_ICONS: Record<SubItemType, LucideIcon> = {
+  work: Wrench,
+  part: Package,
 };
 
 /** Цвета для UI (Tailwind) */
-export const SUB_ITEM_TYPE_COLORS: Record<SubItemType, {
-  bg: string;
-  text: string;
-  border: string;
-}> = {
+export const SUB_ITEM_TYPE_COLORS: Record<
+  SubItemType,
+  { bg: string; text: string; border: string }
+> = {
   work: {
     bg: 'bg-blue-50',
     text: 'text-blue-700',
@@ -39,14 +40,13 @@ export const SUB_ITEM_TYPE_COLORS: Record<SubItemType, {
 
 /**
  * Подзапись внутри работы.
- * Точно совпадает с SubItem в Swift.
  */
 export interface SubItem {
-  id: string;              // UUID
+  id: string;
   type: SubItemType;
   title: string;
-  quantity: number;        // Для деталей — 4 свечи, 4л масла
-  unitPrice: number;       // Цена за единицу
+  quantity: number;
+  unitPrice: number;
   note: string;
 }
 
@@ -55,10 +55,7 @@ export function getSubItemTotal(item: SubItem): number {
   return item.quantity * item.unitPrice;
 }
 
-/**
- * Создать новую подзапись.
- * Аналог `SubItem(type:title:...)` в Swift.
- */
+/** Создать новую подзапись */
 export function createSubItem(
   type: SubItemType,
   title: string,

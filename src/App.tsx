@@ -8,6 +8,7 @@ import { AuthScreen } from './components/AuthScreen';
 import { useAuth } from './hooks/useAuth';
 import { useCarWorkStore } from './stores/useCarWorkStore';
 import { useReminderStore } from './stores/useReminderStore';
+import { ListTodo, BarChart3, Bell } from 'lucide-react';
 
 type Tab = 'works' | 'stats' | 'reminders';
 
@@ -17,13 +18,8 @@ interface AlertMessage {
 }
 
 function App() {
-  // ═══════════════════════════════════════════════
-  // ХУКИ — все наверху, до любых return
-  // ═══════════════════════════════════════════════
-
   const { user, loading, signOut } = useAuth();
 
-  // Работы
   const loadWorks = useCarWorkStore((s) => s.loadWorks);
   const subscribeWorksRealtime = useCarWorkStore((s) => s.subscribeRealtime);
   const clearWorks = useCarWorkStore((s) => s.clearWorks);
@@ -31,7 +27,6 @@ function App() {
     (s) => s.migrateFromLocalStorage,
   );
 
-  // Напоминания
   const loadReminders = useReminderStore((s) => s.loadReminders);
   const subscribeRemindersRealtime = useReminderStore(
     (s) => s.subscribeRealtime,
@@ -41,14 +36,9 @@ function App() {
     (s) => s.migrateFromLocalStorage,
   );
 
-  // UI-состояние
   const [activeTab, setActiveTab] = useState<Tab>('works');
   const [showingImport, setShowingImport] = useState(false);
   const [alert, setAlert] = useState<AlertMessage | null>(null);
-
-  // ═══════════════════════════════════════════════
-  // ЭФФЕКТЫ
-  // ═══════════════════════════════════════════════
 
   useEffect(() => {
     if (!user) {
@@ -61,10 +51,7 @@ function App() {
 
     async function bootstrap() {
       try {
-        // 1. Миграция localStorage → Supabase (одноразово)
-        const worksMigrated = await migrateWorksFromLocalStorage(
-          currentUser.id,
-        );
+        const worksMigrated = await migrateWorksFromLocalStorage(currentUser.id);
         if (worksMigrated > 0) {
           console.log(`✅ Мигрировано работ: ${worksMigrated}`);
         }
@@ -76,11 +63,9 @@ function App() {
           console.log(`✅ Мигрировано напоминаний: ${remindersMigrated}`);
         }
 
-        // 2. Загрузка из Supabase
         await loadWorks(currentUser.id);
         await loadReminders(currentUser.id);
 
-        // 3. Realtime-подписки
         subscribeWorksRealtime(currentUser.id);
         subscribeRemindersRealtime(currentUser.id);
       } catch (err) {
@@ -101,10 +86,6 @@ function App() {
     migrateRemindersFromLocalStorage,
   ]);
 
-  // ═══════════════════════════════════════════════
-  // ФУНКЦИИ (не хуки)
-  // ═══════════════════════════════════════════════
-
   const showAlert = (title: string, message: string) => {
     setAlert({ title, message });
   };
@@ -124,10 +105,6 @@ function App() {
     }
   };
 
-  // ═══════════════════════════════════════════════
-  // РАННИЕ RETURN — после всех хуков
-  // ═══════════════════════════════════════════════
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -145,13 +122,8 @@ function App() {
     return <AuthScreen />;
   }
 
-  // ═══════════════════════════════════════════════
-  // ОСНОВНОЙ RETURN
-  // ═══════════════════════════════════════════════
-
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Шапка */}
       <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">CarTracker</h1>
@@ -166,42 +138,39 @@ function App() {
               aria-label="Выйти"
               title="Выйти"
             >
-              <span className="text-lg">🚪</span>
+              🚪
             </button>
           </div>
         </div>
       </header>
 
-      {/* Контент */}
       <main className="flex-1 overflow-y-auto p-4">
         {activeTab === 'works' && <WorksList />}
         {activeTab === 'stats' && <StatsView />}
         {activeTab === 'reminders' && <RemindersList />}
       </main>
 
-      {/* Нижняя навигация */}
       <nav className="bg-white border-t border-gray-200 flex sticky bottom-0 z-20">
         <TabButton
           active={activeTab === 'works'}
           onClick={() => setActiveTab('works')}
-          icon="📋"
+          icon={<ListTodo />}
           label="Работы"
         />
         <TabButton
           active={activeTab === 'stats'}
           onClick={() => setActiveTab('stats')}
-          icon="📊"
+          icon={<BarChart3 />}
           label="Статистика"
         />
         <TabButton
           active={activeTab === 'reminders'}
           onClick={() => setActiveTab('reminders')}
-          icon="🔔"
+          icon={<Bell />}
           label="Напоминания"
         />
       </nav>
 
-      {/* Диалог импорта */}
       {showingImport && (
         <ImportDialog
           onClose={() => setShowingImport(false)}
@@ -210,7 +179,6 @@ function App() {
         />
       )}
 
-      {/* Alert */}
       {alert && (
         <AlertDialog
           title={alert.title}
@@ -222,12 +190,10 @@ function App() {
   );
 }
 
-// ─── TabButton ────────────────────────────────
-
 interface TabButtonProps {
   active: boolean;
   onClick: () => void;
-  icon: string;
+  icon: React.ReactNode;
   label: string;
 }
 
@@ -239,13 +205,11 @@ function TabButton({ active, onClick, icon, label }: TabButtonProps) {
         active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
       }`}
     >
-      <span className="text-2xl mb-1">{icon}</span>
+      <span className="mb-1">{icon}</span>
       <span className="text-xs font-medium">{label}</span>
     </button>
   );
 }
-
-// ─── AlertDialog ──────────────────────────────
 
 interface AlertDialogProps {
   title: string;

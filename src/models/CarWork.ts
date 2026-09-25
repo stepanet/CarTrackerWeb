@@ -1,5 +1,12 @@
-import type { SubItem } from './SubItem';
-import { getSubItemTotal } from './SubItem';
+import {
+  Wrench,
+  Hammer,
+  CircleDot,
+  Fuel,
+  Shield,
+  Tag,
+  type LucideIcon,
+} from 'lucide-react';
 
 /**
  * Категории работ.
@@ -23,14 +30,14 @@ export const ALL_CATEGORIES: WorkCategory[] = [
   'Прочее',
 ];
 
-/** Иконки-эмодзи для веба (в Swift — SF Symbols) */
-export const CATEGORY_ICONS: Record<WorkCategory, string> = {
-  'ТО': '🔧',
-  'Ремонт': '🔨',
-  'Шины': '⭕',
-  'Топливо': '⛽',
-  'Страховка': '🛡️',
-  'Прочее': '📌',
+/** Иконки-компоненты Lucide для веба */
+export const CATEGORY_ICONS: Record<WorkCategory, LucideIcon> = {
+  'ТО': Wrench,
+  'Ремонт': Hammer,
+  'Шины': CircleDot,
+  'Топливо': Fuel,
+  'Страховка': Shield,
+  'Прочее': Tag,
 };
 
 /**
@@ -38,20 +45,22 @@ export const CATEGORY_ICONS: Record<WorkCategory, string> = {
  * Поля точно совпадают с CarWork в Swift.
  */
 export interface CarWork {
-  id: string;              // UUID
+  id: string;
   title: string;
   category: WorkCategory;
-  date: string;            // ISO 8601
+  date: string;
   mileage: number;
   cost: number;
   note: string;
   isDone: boolean;
-  subWorks: SubItem[];    // ← НОВОЕ ПОЛЕ
+  subWorks: SubItem[];
 }
+
+import type { SubItem } from './SubItem';
+import { getSubItemTotal } from './SubItem';
 
 /**
  * Создать новую работу с дефолтными значениями.
- * Аналог `CarWork(title: ...)` в Swift.
  */
 export function createCarWork(
   title: string,
@@ -63,7 +72,6 @@ export function createCarWork(
   isDone: boolean = true,
   subWorks: SubItem[] = [],
 ): CarWork {
-  // Если есть подработы — стоимость = сумма подработ
   const finalCost = subWorks.length > 0
     ? subWorks.reduce((sum, item) => sum + getSubItemTotal(item), 0)
     : cost;

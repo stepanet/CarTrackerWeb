@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
+import { BarChart3 } from 'lucide-react';
 import type { CarWork } from '../../models/CarWork';
 import { getMonthlyCostsDetailed } from '../../stores/statsHelpers';
 
@@ -156,7 +157,7 @@ function formatAxisTick(value: number): string {
 function EmptyChart() {
   return (
     <div className="h-56 flex flex-col items-center justify-center text-gray-400">
-      <p className="text-4xl mb-2">📊</p>
+      <BarChart3 className="w-12 h-12 mb-2" />
       <p className="text-sm">Нет данных для отображения</p>
     </div>
   );
@@ -187,12 +188,12 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
       <div className="space-y-0.5">
         {item.worksTotal > 0 && (
           <p className="text-blue-300">
-            🔧 Работы: {item.worksTotal.toLocaleString('ru-RU')} ₽
+            Работы: {item.worksTotal.toLocaleString('ru-RU')} ₽
           </p>
         )}
         {item.partsTotal > 0 && (
           <p className="text-orange-300">
-            📦 Детали: {item.partsTotal.toLocaleString('ru-RU')} ₽
+            Детали: {item.partsTotal.toLocaleString('ru-RU')} ₽
           </p>
         )}
         <p className="font-semibold border-t border-gray-700 pt-0.5 mt-1">

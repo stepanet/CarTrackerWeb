@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import type { CarWork } from '../../models/CarWork';
 import type { SubItemType } from '../../models/SubItem';
 import { getTopItems } from '../../stores/statsHelpers';
+import { Wrench, Package, BarChart3 } from 'lucide-react';
 
 interface TopItemsChartProps {
   works: CarWork[];
@@ -24,14 +25,14 @@ export function TopItemsChart({ works }: TopItemsChartProps) {
         <TypeChip
           active={selectedType === 'work'}
           onClick={() => setSelectedType('work')}
-          icon="🔧"
+          icon={<Wrench className="w-4 h-4" />}
           label="Работы"
           activeColor="text-blue-600"
         />
         <TypeChip
           active={selectedType === 'part'}
           onClick={() => setSelectedType('part')}
-          icon="📦"
+          icon={<Package className="w-4 h-4" />}
           label="Детали"
           activeColor="text-orange-600"
         />
@@ -40,7 +41,7 @@ export function TopItemsChart({ works }: TopItemsChartProps) {
       {/* Список */}
       {items.length === 0 ? (
         <div className="py-8 text-center">
-          <p className="text-3xl mb-2">📊</p>
+          <BarChart3 className="w-10 h-10 mx-auto mb-2 text-gray-300" />
           <p className="text-sm text-gray-400">
             {selectedType === 'work'
               ? 'Нет работ с указанной стоимостью'
@@ -108,7 +109,6 @@ export function TopItemsChart({ works }: TopItemsChartProps) {
 
 // ─── Вспомогательные ──────────────────────────
 
-/** Форматирует количество: 1 → "1", 4 → "4", 4.5 → "4.5" */
 function formatQty(value: number): string {
   if (value === Math.floor(value)) return String(Math.floor(value));
   return value.toFixed(2).replace(/\.?0+$/, '');
@@ -117,7 +117,7 @@ function formatQty(value: number): string {
 interface TypeChipProps {
   active: boolean;
   onClick: () => void;
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   activeColor: string;
 }
@@ -132,7 +132,7 @@ function TypeChip({ active, onClick, icon, label, activeColor }: TypeChipProps) 
           : 'text-gray-500 hover:text-gray-700'
       }`}
     >
-      <span>{icon}</span>
+      {icon}
       <span>{label}</span>
     </button>
   );

@@ -5,10 +5,11 @@ import {
   SUB_ITEM_TYPE_ICONS,
   createSubItem,
 } from '../../models/SubItem';
+import { Plus, Minus } from 'lucide-react';
 
 interface SubItemFormProps {
-  item: SubItem | null;            // null = создание
-  defaultType: SubItemType;        // какой тип открыть по умолчанию
+  item: SubItem | null;
+  defaultType: SubItemType;
   onSave: (item: SubItem) => void;
   onCancel: () => void;
 }
@@ -27,23 +28,18 @@ export function SubItemForm({
 
   const isEditing = item !== null;
 
-  // Парсим значения
-  const qtyNum = parseNumeric(quantity) ?? 1;    // пусто → 1
+  const qtyNum = parseNumeric(quantity) ?? 1;
   const priceNum = parseNumeric(unitPrice) ?? 0;
 
   const isValid =
-    title.trim().length > 0 &&
-    qtyNum > 0 &&
-    priceNum >= 0;
+    title.trim().length > 0 && qtyNum > 0 && priceNum >= 0;
 
   const totalCost = qtyNum * priceNum;
 
-  // Заполняем при редактировании
   useEffect(() => {
     if (item) {
       setType(item.type);
       setTitle(item.title);
-      // Если quantity == 1 — оставляем пустым (дефолт)
       setQuantity(item.quantity === 1 ? '' : formatNumeric(item.quantity));
       setUnitPrice(formatNumeric(item.unitPrice));
       setNote(item.note);
@@ -66,9 +62,7 @@ export function SubItemForm({
         note: note.trim(),
       });
     } else {
-      onSave(
-        createSubItem(type, title, qtyNum, priceNum, note),
-      );
+      onSave(createSubItem(type, title, qtyNum, priceNum, note));
     }
   };
 
@@ -127,25 +121,28 @@ export function SubItemForm({
               Тип
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {(['work', 'part'] as SubItemType[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setType(t)}
-                  className={`flex items-center justify-center gap-2 p-2.5 rounded-lg border-2 transition-colors ${
-                    type === t
-                      ? t === 'work'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-orange-500 bg-orange-50 text-orange-700'
-                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                  }`}
-                >
-                  <span className="text-lg">{SUB_ITEM_TYPE_ICONS[t]}</span>
-                  <span className="text-sm font-medium">
-                    {SUB_ITEM_TYPE_LABELS[t]}
-                  </span>
-                </button>
-              ))}
+              {(['work', 'part'] as SubItemType[]).map((t) => {
+                const TypeIcon = SUB_ITEM_TYPE_ICONS[t];
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setType(t)}
+                    className={`flex items-center justify-center gap-2 p-2.5 rounded-lg border-2 transition-colors ${
+                      type === t
+                        ? t === 'work'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-orange-500 bg-orange-50 text-orange-700'
+                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    <TypeIcon className="w-4 h-4" />
+                    <span className="text-sm font-medium">
+                      {SUB_ITEM_TYPE_LABELS[t]}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -177,9 +174,9 @@ export function SubItemForm({
               <button
                 type="button"
                 onClick={decrementQuantity}
-                className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-xl text-gray-700 shrink-0"
+                className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 shrink-0"
               >
-                −
+                <Minus className="w-4 h-4" />
               </button>
               <input
                 type="text"
@@ -192,9 +189,9 @@ export function SubItemForm({
               <button
                 type="button"
                 onClick={incrementQuantity}
-                className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-xl text-gray-700 shrink-0"
+                className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 shrink-0"
               >
-                +
+                <Plus className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -223,7 +220,10 @@ export function SubItemForm({
           <div className="bg-blue-50 rounded-lg p-3 flex items-center justify-between">
             <span className="text-sm text-blue-900 font-medium">Итого</span>
             <span className="text-lg font-bold text-blue-700">
-              {totalCost.toLocaleString('ru-RU')} ₽
+              {totalCost.toLocaleString('ru-RU', {
+                maximumFractionDigits: 0,
+              })}{' '}
+              ₽
             </span>
           </div>
 
@@ -236,9 +236,7 @@ export function SubItemForm({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder={
-                type === 'part'
-                  ? 'Артикул, бренд, комментарий'
-                  : 'Комментарий'
+                type === 'part' ? 'Артикул, бренд, комментарий' : 'Комментарий'
               }
               rows={2}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -250,9 +248,6 @@ export function SubItemForm({
   );
 }
 
-// ─── Вспомогательные ──────────────────────────
-
-/** Парсит строку в число: "" → null, "4,5" → 4.5, "4.5" → 4.5 */
 function parseNumeric(value: string): number | null {
   if (!value.trim()) return null;
   const normalized = value.replace(',', '.');
@@ -260,7 +255,6 @@ function parseNumeric(value: string): number | null {
   return isNaN(num) ? null : num;
 }
 
-/** Форматирует число для поля ввода */
 function formatNumeric(value: number): string {
   if (value === Math.floor(value)) return String(Math.floor(value));
   return value.toFixed(2);

@@ -5,6 +5,14 @@ import {
   getTotalWorksCost,
   getTotalPartsCost,
 } from '../../stores/statsHelpers';
+import {
+  Banknote,
+  Calendar,
+  TrendingUp,
+  ListTodo,
+  Wrench,
+  Package,
+} from 'lucide-react';
 import { MonthlyChart } from './MonthlyChart';
 import { CategoryChart } from './CategoryChart';
 import { TopItemsChart } from './TopItemsChart';
@@ -51,7 +59,7 @@ export function StatsView() {
           {/* Работы */}
           <div>
             <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
-              <span className="text-blue-500">🔧</span>
+              <Wrench className="w-3.5 h-3.5 text-blue-500" />
               <span>Работы</span>
             </div>
             <p className="font-semibold text-gray-900 text-sm">
@@ -63,7 +71,7 @@ export function StatsView() {
           {/* Детали */}
           <div>
             <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
-              <span className="text-orange-500">📦</span>
+              <Package className="w-3.5 h-3.5 text-orange-500" />
               <span>Детали</span>
             </div>
             <p className="font-semibold text-gray-900 text-sm">
@@ -79,19 +87,19 @@ export function StatsView() {
         <StatCard
           label="За год"
           value={`${formatMoney(totalThisYear)} ₽`}
-          icon="📅"
+          icon={<Calendar className="w-5 h-5" />}
           iconColor="text-green-500"
         />
         <StatCard
           label="Средн/мес"
           value={`${formatMoney(averagePerMonth)} ₽`}
-          icon="📈"
+          icon={<TrendingUp className="w-5 h-5" />}
           iconColor="text-orange-500"
         />
         <StatCard
           label="Записей"
           value={String(works.length)}
-          icon="📋"
+          icon={<ListTodo className="w-5 h-5" />}
           iconColor="text-purple-500"
         />
       </div>
@@ -109,14 +117,14 @@ export function StatsView() {
 interface StatCardProps {
   label: string;
   value: string;
-  icon: string;
+  icon: React.ReactNode;
   iconColor: string;
 }
 
 function StatCard({ label, value, icon, iconColor }: StatCardProps) {
   return (
     <div className="bg-white rounded-xl p-3 shadow-sm">
-      <div className={`text-lg mb-1 ${iconColor}`}>{icon}</div>
+      <div className={`mb-1 ${iconColor}`}>{icon}</div>
       <p className="font-semibold text-gray-900 text-sm truncate">{value}</p>
       <p className="text-xs text-gray-500">{label}</p>
     </div>
