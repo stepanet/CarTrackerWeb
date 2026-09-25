@@ -6,7 +6,6 @@ import {
   getTotalPartsCost,
 } from '../../stores/statsHelpers';
 import {
-  Banknote,
   Calendar,
   TrendingUp,
   ListTodo,
