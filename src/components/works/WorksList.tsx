@@ -137,7 +137,7 @@ export function WorksList() {
         {/* Шапка со статистикой */}
         <div className="grid grid-cols-3 gap-2">
           <StatCard
-            label="Всего1"
+            label="Всего"
             value={`${formatMoney(totalCost)} ₽`}
             icon={<Banknote className="w-5 h-5" />}
             iconColor="text-blue-500"
