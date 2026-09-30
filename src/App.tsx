@@ -2,16 +2,18 @@ import { useState, useEffect } from 'react';
 import { WorksList } from './components/works/WorksList';
 import { StatsView } from './components/stats/StatsView';
 import { RemindersList } from './components/reminders/RemindersList';
+import { GarageView } from './components/vehicles/GarageView';
 import { BackupMenu } from './components/BackupMenu';
 import { ImportDialog } from './components/ImportDialog';
 import { AuthScreen } from './components/AuthScreen';
+import { VehicleSwitcher } from './components/VehicleSwitcher';
 import { useAuth } from './hooks/useAuth';
 import { useCarWorkStore } from './stores/useCarWorkStore';
 import { useReminderStore } from './stores/useReminderStore';
 import { useVehicleStore } from './stores/useVehicleStore';
-import { ListTodo, BarChart3, Bell } from 'lucide-react';
+import { ListTodo, BarChart3, Bell, Car } from 'lucide-react';
 
-type Tab = 'works' | 'stats' | 'reminders';
+type Tab = 'works' | 'stats' | 'reminders' | 'garage';
 
 interface AlertMessage {
   title: string;
@@ -19,14 +21,10 @@ interface AlertMessage {
 }
 
 function App() {
-  // ═══════════════════════════════════════════════
-  // ВСЕ ХУКИ — НАВЕРХУ, до любых useEffect и return
-  // ═══════════════════════════════════════════════
-
-  // 1. Аутентификация
+  // ─── Хуки ────────────────────────────────────
   const { user, loading, signOut } = useAuth();
 
-  // 2. Работы — загрузка, подписки, очистка, миграция
+  // Работы
   const loadWorks = useCarWorkStore((s) => s.loadWorks);
   const subscribeWorksRealtime = useCarWorkStore((s) => s.subscribeRealtime);
   const clearWorks = useCarWorkStore((s) => s.clear);
@@ -35,7 +33,7 @@ function App() {
   );
   const migrateOrphanWorks = useCarWorkStore((s) => s.migrateOrphanWorks);
 
-  // 3. Напоминания
+  // Напоминания
   const loadReminders = useReminderStore((s) => s.loadReminders);
   const subscribeRemindersRealtime = useReminderStore(
     (s) => s.subscribeRealtime,
@@ -48,24 +46,21 @@ function App() {
     (s) => s.migrateOrphanReminders,
   );
 
-  // 4. Транспорт
+  // Транспорт
   const loadVehicles = useVehicleStore((s) => s.loadVehicles);
   const ensureDefaultVehicle = useVehicleStore((s) => s.ensureDefaultVehicle);
   const subscribeVehiclesRealtime = useVehicleStore((s) => s.subscribeRealtime);
   const clearVehicles = useVehicleStore((s) => s.clear);
+  const activeVehicleId = useVehicleStore((s) => s.activeVehicleId);
 
-  // 5. UI-состояние
+  // UI
   const [activeTab, setActiveTab] = useState<Tab>('works');
   const [showingImport, setShowingImport] = useState(false);
   const [alert, setAlert] = useState<AlertMessage | null>(null);
 
-  // ═══════════════════════════════════════════════
-  // BOOTSTRAP ПРИ ВХОДЕ
-  // ═══════════════════════════════════════════════
-
+  // ─── Bootstrap при входе ────────────────────
   useEffect(() => {
     if (!user) {
-      // Пользователь вышел — очищаем всё
       clearWorks();
       clearReminders();
       clearVehicles();
@@ -76,42 +71,20 @@ function App() {
 
     async function bootstrap() {
       try {
-        // 1. Миграция localStorage → Supabase (старые данные из localStorage)
-        const worksMigrated = await migrateWorksFromLocalStorage(
-          currentUser.id,
-        );
-        if (worksMigrated > 0) {
-          console.log(
-            `✅ Мигрировано работ из localStorage: ${worksMigrated}`,
-          );
-        }
+        await migrateWorksFromLocalStorage(currentUser.id);
+        await migrateRemindersFromLocalStorage(currentUser.id);
 
-        const remindersMigrated = await migrateRemindersFromLocalStorage(
-          currentUser.id,
-        );
-        if (remindersMigrated > 0) {
-          console.log(
-            `✅ Мигрировано напоминаний из localStorage: ${remindersMigrated}`,
-          );
-        }
-
-        // 2. Загрузка транспортов ПЕРВЫМИ
         await loadVehicles(currentUser.id);
-
-        // 3. Если нет ни одного ТС — создаём "Мою машину"
         const defaultVehicle = await ensureDefaultVehicle(currentUser.id);
 
-        // 4. Миграция: привязываем старые работы/напоминания без vehicle_id
         if (defaultVehicle) {
           await migrateOrphanWorks(currentUser.id, defaultVehicle.id);
           await migrateOrphanReminders(currentUser.id, defaultVehicle.id);
         }
 
-        // 5. Загрузка работ и напоминаний (уже отфильтрованных по активному ТС)
         await loadWorks(currentUser.id);
         await loadReminders(currentUser.id);
 
-        // 6. Realtime-подписки
         subscribeVehiclesRealtime(currentUser.id);
         subscribeWorksRealtime(currentUser.id);
         subscribeRemindersRealtime(currentUser.id);
@@ -124,10 +97,27 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // ═══════════════════════════════════════════════
-  // ФУНКЦИИ
-  // ═══════════════════════════════════════════════
+  // ─── Перезагрузка данных при смене активного ТС ───
+  useEffect(() => {
+    if (!user || !activeVehicleId) return;
 
+    const currentUser = user;
+
+    async function reloadForVehicle() {
+      try {
+        console.log('🔄 Смена активного транспорта, перезагрузка...');
+        await loadWorks(currentUser.id);
+        await loadReminders(currentUser.id);
+      } catch (err) {
+        console.error('Ошибка перезагрузки при смене ТС:', err);
+      }
+    }
+
+    reloadForVehicle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeVehicleId]);
+
+  // ─── Функции ────────────────────────────────
   const showAlert = (title: string, message: string) => {
     setAlert({ title, message });
   };
@@ -148,10 +138,7 @@ function App() {
     }
   };
 
-  // ═══════════════════════════════════════════════
-  // РАННИЕ RETURN — ПОСЛЕ всех хуков
-  // ═══════════════════════════════════════════════
-
+  // ─── Ранние return ──────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -169,17 +156,19 @@ function App() {
     return <AuthScreen />;
   }
 
-  // ═══════════════════════════════════════════════
-  // ОСНОВНОЙ RETURN
-  // ═══════════════════════════════════════════════
-
+  // ─── Основной return ────────────────────────
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Шапка */}
       <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-900">CarTracker</h1>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <h1 className="text-lg font-semibold text-gray-900 shrink-0">
+              CarTracker
+            </h1>
+            <VehicleSwitcher onOpenGarage={() => setActiveTab('garage')} />
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
             <BackupMenu
               onImportClick={() => setShowingImport(true)}
               onShowAlert={showAlert}
@@ -201,6 +190,7 @@ function App() {
         {activeTab === 'works' && <WorksList />}
         {activeTab === 'stats' && <StatsView />}
         {activeTab === 'reminders' && <RemindersList />}
+        {activeTab === 'garage' && <GarageView />}
       </main>
 
       {/* Нижняя навигация */}
@@ -222,6 +212,12 @@ function App() {
           onClick={() => setActiveTab('reminders')}
           icon={<Bell />}
           label="Напоминания"
+        />
+        <TabButton
+          active={activeTab === 'garage'}
+          onClick={() => setActiveTab('garage')}
+          icon={<Car />}
+          label="Гараж"
         />
       </nav>
 
@@ -246,9 +242,7 @@ function App() {
   );
 }
 
-// ═══════════════════════════════════════════════
-// Вспомогательные компоненты
-// ═══════════════════════════════════════════════
+// ─── TabButton ────────────────────────────────
 
 interface TabButtonProps {
   active: boolean;
@@ -266,10 +260,12 @@ function TabButton({ active, onClick, icon, label }: TabButtonProps) {
       }`}
     >
       <span className="mb-1">{icon}</span>
-      <span className="text-xs font-medium">{label}</span>
+      <span className="text-[10px] font-medium">{label}</span>
     </button>
   );
 }
+
+// ─── AlertDialog ──────────────────────────────
 
 interface AlertDialogProps {
   title: string;
