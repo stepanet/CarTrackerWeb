@@ -46,6 +46,7 @@ export const CATEGORY_ICONS: Record<WorkCategory, LucideIcon> = {
  */
 export interface CarWork {
   id: string;
+  vehicleId?: string | null;   // ← НОВОЕ: привязка к транспорту (опционально для старых данных)
   title: string;
   category: WorkCategory;
   date: string;
@@ -71,6 +72,7 @@ export function createCarWork(
   note: string,
   isDone: boolean = true,
   subWorks: SubItem[] = [],
+  vehicleId: string | null = null,
 ): CarWork {
   const finalCost = subWorks.length > 0
     ? subWorks.reduce((sum, item) => sum + getSubItemTotal(item), 0)
@@ -78,6 +80,7 @@ export function createCarWork(
 
   return {
     id: crypto.randomUUID(),
+    vehicleId,
     title: title.trim(),
     category,
     date: date.toISOString(),

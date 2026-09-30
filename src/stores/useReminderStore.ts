@@ -1,32 +1,39 @@
 import { create } from 'zustand';
-import type { Reminder, ReminderStatus } from '../models/Reminder';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import type { Reminder, ReminderStatus } from '../models/Reminder';
 import {
   fetchAllReminders,
   createReminder as apiCreateReminder,
   updateReminder as apiUpdateReminder,
   deleteReminder as apiDeleteReminder,
   bulkInsertReminders,
+  migrateRemindersToVehicle,
 } from '../lib/remindersApi';
 import { subscribeToReminderChanges } from '../lib/realtimeHelpers';
+import { useVehicleStore } from './useVehicleStore';
+
+// ═══════════════════════════════════════════════
+// Состояние
+// ═══════════════════════════════════════════════
 
 interface ReminderState {
   reminders: Reminder[];
 
-  // Состояние
   isLoading: boolean;
   error: string | null;
   userId: string | null;
   realtimeChannel: RealtimeChannel | null;
 
-  // Загрузка / синхронизация
+  // Загрузка
   loadReminders: (userId: string) => Promise<void>;
+  reload: () => Promise<void>;
   subscribeRealtime: (userId: string) => void;
   unsubscribeRealtime: () => void;
-  clearReminders: () => void;
+  clear: () => void;
 
   // Миграция
   migrateFromLocalStorage: (userId: string) => Promise<number>;
+  migrateOrphanReminders: (userId: string, vehicleId: string) => Promise<number>;
 
   // CRUD
   add: (reminder: Reminder) => Promise<void>;
@@ -50,7 +57,11 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
   loadReminders: async (userId: string) => {
     set({ isLoading: true, error: null, userId });
     try {
-      const reminders = await fetchAllReminders(userId);
+      const activeVehicleId = useVehicleStore.getState().activeVehicleId;
+      const reminders = await fetchAllReminders(
+        userId,
+        activeVehicleId ?? undefined,
+      );
       set({ reminders, isLoading: false });
     } catch (err) {
       const message =
@@ -60,13 +71,22 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
     }
   },
 
+  reload: async () => {
+    const { userId } = get();
+    if (!userId) return;
+    await get().loadReminders(userId);
+  },
+
   subscribeRealtime: (userId: string) => {
-    // Отписываемся от старой подписки, если есть
     get().unsubscribeRealtime();
 
     const channel = subscribeToReminderChanges(userId, async () => {
       try {
-        const reminders = await fetchAllReminders(userId);
+        const activeVehicleId = useVehicleStore.getState().activeVehicleId;
+        const reminders = await fetchAllReminders(
+          userId,
+          activeVehicleId ?? undefined,
+        );
         set({ reminders });
       } catch (err) {
         console.error('Ошибка realtime-синхронизации напоминаний:', err);
@@ -84,7 +104,7 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
     }
   },
 
-  clearReminders: () => {
+  clear: () => {
     get().unsubscribeRealtime();
     set({ reminders: [], userId: null, error: null });
   },
@@ -105,7 +125,6 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
 
       const result = await bulkInsertReminders(reminders, userId);
 
-      // Очищаем localStorage В ЛЮБОМ СЛУЧАЕ — миграция больше не нужна
       localStorage.removeItem('cartracker-reminders');
 
       if (result.skipped > 0) {
@@ -121,24 +140,41 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
     }
   },
 
+  migrateOrphanReminders: async (userId: string, vehicleId: string) => {
+    try {
+      const count = await migrateRemindersToVehicle(userId, vehicleId);
+      if (count > 0) {
+        console.log(`🔄 Привязано напоминаний к транспорту: ${count}`);
+      }
+      return count;
+    } catch (err) {
+      console.error('Ошибка миграции напоминаний:', err);
+      return 0;
+    }
+  },
+
   // ─── CRUD ───────────────────────────────────
 
   add: async (reminder) => {
     const { userId } = get();
     if (!userId) throw new Error('Не авторизован');
 
-    // 1. Оптимистично добавляем
+    // Проставляем активный транспорт, если не задан
+    const activeVehicleId = useVehicleStore.getState().activeVehicleId;
+    const withVehicle: Reminder = {
+      ...reminder,
+      vehicleId: reminder.vehicleId ?? activeVehicleId,
+    };
+
     set((state) => ({
-      reminders: [...state.reminders, reminder],
+      reminders: [...state.reminders, withVehicle],
     }));
 
-    // 2. Сохраняем в Supabase
     try {
-      await apiCreateReminder(reminder, userId);
+      await apiCreateReminder(withVehicle, userId);
     } catch (err) {
-      // Откатываем
       set((state) => ({
-        reminders: state.reminders.filter((r) => r.id !== reminder.id),
+        reminders: state.reminders.filter((r) => r.id !== withVehicle.id),
       }));
       throw err;
     }
@@ -150,18 +186,15 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
 
     const previous = get().reminders.find((r) => r.id === reminder.id);
 
-    // 1. Оптимистично обновляем
     set((state) => ({
       reminders: state.reminders.map((r) =>
         r.id === reminder.id ? reminder : r,
       ),
     }));
 
-    // 2. Сохраняем в Supabase
     try {
       await apiUpdateReminder(reminder, userId);
     } catch (err) {
-      // Откатываем
       if (previous) {
         set((state) => ({
           reminders: state.reminders.map((r) =>
@@ -176,16 +209,13 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
   remove: async (id) => {
     const previous = get().reminders.find((r) => r.id === id);
 
-    // 1. Оптимистично удаляем
     set((state) => ({
       reminders: state.reminders.filter((r) => r.id !== id),
     }));
 
-    // 2. Удаляем из Supabase
     try {
       await apiDeleteReminder(id);
     } catch (err) {
-      // Откатываем
       if (previous) {
         set((state) => ({
           reminders: [...state.reminders, previous],
@@ -224,8 +254,7 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
 }));
 
 // ═══════════════════════════════════════════════
-// Логика статусов — вынесена в отдельный модуль,
-// чтобы использовать в компонентах без импорта store
+// Логика статусов (без изменений)
 // ═══════════════════════════════════════════════
 
 /** Следующая дата замены (null, если интервал по месяцам не задан) */

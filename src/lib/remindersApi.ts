@@ -8,6 +8,7 @@ import type { Reminder } from '../models/Reminder';
 interface ReminderRow {
   id: string;
   user_id: string;
+  vehicle_id: string | null;   // ← НОВОЕ
   title: string;
   icon: string;
   interval_km: number;
@@ -26,6 +27,7 @@ interface ReminderRow {
 function rowToReminder(row: ReminderRow): Reminder {
   return {
     id: row.id,
+    vehicleId: row.vehicle_id,
     title: row.title,
     icon: row.icon,
     intervalKm: row.interval_km,
@@ -40,6 +42,7 @@ function reminderToRow(reminder: Reminder, userId: string) {
   return {
     id: reminder.id,
     user_id: userId,
+    vehicle_id: reminder.vehicleId ?? null,   // ← НОВОЕ
     title: reminder.title,
     icon: reminder.icon,
     interval_km: reminder.intervalKm,
@@ -55,12 +58,21 @@ function reminderToRow(reminder: Reminder, userId: string) {
 // ═══════════════════════════════════════════════
 
 /** Получить все напоминания пользователя */
-export async function fetchAllReminders(userId: string): Promise<Reminder[]> {
-  const { data, error } = await supabase
+export async function fetchAllReminders(
+  userId: string,
+  vehicleId?: string,   // ← НОВЫЙ ПАРАМЕТР
+): Promise<Reminder[]> {
+  let query = supabase
     .from('reminders')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: true });
+
+  if (vehicleId) {
+    query = query.eq('vehicle_id', vehicleId);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
   if (!data) return [];
@@ -136,4 +148,32 @@ export async function bulkInsertReminders(
     inserted: toInsert.length,
     skipped: reminders.length - toInsert.length,
   };
+}
+
+/**
+ * Миграция: привязать все напоминания без vehicle_id к указанному транспорту.
+ */
+export async function migrateRemindersToVehicle(
+  userId: string,
+  vehicleId: string,
+): Promise<number> {
+  const { data: orphanReminders, error: fetchError } = await supabase
+    .from('reminders')
+    .select('id')
+    .eq('user_id', userId)
+    .is('vehicle_id', null);
+
+  if (fetchError) throw fetchError;
+  if (!orphanReminders || orphanReminders.length === 0) return 0;
+
+  const ids = orphanReminders.map((r) => r.id);
+
+  const { error: updateError } = await supabase
+    .from('reminders')
+    .update({ vehicle_id: vehicleId })
+    .in('id', ids);
+
+  if (updateError) throw updateError;
+
+  return ids.length;
 }

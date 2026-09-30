@@ -9,6 +9,7 @@ import type { SubItem, SubItemType } from '../models/SubItem';
 interface WorkRow {
   id: string;
   user_id: string;
+  vehicle_id: string | null;   // ← НОВОЕ
   title: string;
   category: string;
   date: string;
@@ -49,6 +50,7 @@ function rowToSubItem(row: SubWorkRow): SubItem {
 function rowToCarWork(row: WorkRow, subWorks: SubWorkRow[]): CarWork {
   return {
     id: row.id,
+    vehicleId: row.vehicle_id,
     title: row.title,
     category: row.category as WorkCategory,
     date: row.date,
@@ -64,6 +66,7 @@ function carWorkToRow(work: CarWork, userId: string) {
   return {
     id: work.id,
     user_id: userId,
+    vehicle_id: work.vehicleId ?? null,   // ← НОВОЕ
     title: work.title,
     category: work.category,
     date: work.date,
@@ -91,12 +94,21 @@ function subItemToRow(item: SubItem, workId: string) {
 // ═══════════════════════════════════════════════
 
 /** Получить все работы пользователя вместе с подработами */
-export async function fetchAllWorks(userId: string): Promise<CarWork[]> {
-  const { data: works, error: worksError } = await supabase
+export async function fetchAllWorks(
+  userId: string,
+  vehicleId?: string,   // ← НОВЫЙ ПАРАМЕТР
+): Promise<CarWork[]> {
+  let query = supabase
     .from('works')
     .select('*')
     .eq('user_id', userId)
     .order('date', { ascending: false });
+
+  if (vehicleId) {
+    query = query.eq('vehicle_id', vehicleId);
+  }
+
+  const { data: works, error: worksError } = await query;
 
   if (worksError) throw worksError;
   if (!works || works.length === 0) return [];
@@ -110,7 +122,6 @@ export async function fetchAllWorks(userId: string): Promise<CarWork[]> {
 
   if (subError) throw subError;
 
-  // Группируем подработы по work_id
   const subByWork = new Map<string, SubWorkRow[]>();
   for (const sw of subWorks ?? []) {
     const arr = subByWork.get(sw.work_id) ?? [];
@@ -235,4 +246,34 @@ export async function bulkInsertWorks(
     inserted: toInsert.length,
     skipped: works.length - toInsert.length,
   };
+}
+
+/**
+ * Миграция: привязать все работы без vehicle_id к указанному транспорту.
+ * Возвращает количество обновлённых записей.
+ */
+export async function migrateWorksToVehicle(
+  userId: string,
+  vehicleId: string,
+): Promise<number> {
+  // Получаем все работы без vehicle_id
+  const { data: orphanWorks, error: fetchError } = await supabase
+    .from('works')
+    .select('id')
+    .eq('user_id', userId)
+    .is('vehicle_id', null);
+
+  if (fetchError) throw fetchError;
+  if (!orphanWorks || orphanWorks.length === 0) return 0;
+
+  const ids = orphanWorks.map((w) => w.id);
+
+  const { error: updateError } = await supabase
+    .from('works')
+    .update({ vehicle_id: vehicleId })
+    .in('id', ids);
+
+  if (updateError) throw updateError;
+
+  return ids.length;
 }

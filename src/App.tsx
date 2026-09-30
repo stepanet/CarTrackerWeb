@@ -8,6 +8,7 @@ import { AuthScreen } from './components/AuthScreen';
 import { useAuth } from './hooks/useAuth';
 import { useCarWorkStore } from './stores/useCarWorkStore';
 import { useReminderStore } from './stores/useReminderStore';
+import { useVehicleStore } from './stores/useVehicleStore';
 import { ListTodo, BarChart3, Bell } from 'lucide-react';
 
 type Tab = 'works' | 'stats' | 'reminders';
@@ -18,32 +19,56 @@ interface AlertMessage {
 }
 
 function App() {
+  // ═══════════════════════════════════════════════
+  // ВСЕ ХУКИ — НАВЕРХУ, до любых useEffect и return
+  // ═══════════════════════════════════════════════
+
+  // 1. Аутентификация
   const { user, loading, signOut } = useAuth();
 
+  // 2. Работы — загрузка, подписки, очистка, миграция
   const loadWorks = useCarWorkStore((s) => s.loadWorks);
   const subscribeWorksRealtime = useCarWorkStore((s) => s.subscribeRealtime);
-  const clearWorks = useCarWorkStore((s) => s.clearWorks);
+  const clearWorks = useCarWorkStore((s) => s.clear);
   const migrateWorksFromLocalStorage = useCarWorkStore(
     (s) => s.migrateFromLocalStorage,
   );
+  const migrateOrphanWorks = useCarWorkStore((s) => s.migrateOrphanWorks);
 
+  // 3. Напоминания
   const loadReminders = useReminderStore((s) => s.loadReminders);
   const subscribeRemindersRealtime = useReminderStore(
     (s) => s.subscribeRealtime,
   );
-  const clearReminders = useReminderStore((s) => s.clearReminders);
+  const clearReminders = useReminderStore((s) => s.clear);
   const migrateRemindersFromLocalStorage = useReminderStore(
     (s) => s.migrateFromLocalStorage,
   );
+  const migrateOrphanReminders = useReminderStore(
+    (s) => s.migrateOrphanReminders,
+  );
 
+  // 4. Транспорт
+  const loadVehicles = useVehicleStore((s) => s.loadVehicles);
+  const ensureDefaultVehicle = useVehicleStore((s) => s.ensureDefaultVehicle);
+  const subscribeVehiclesRealtime = useVehicleStore((s) => s.subscribeRealtime);
+  const clearVehicles = useVehicleStore((s) => s.clear);
+
+  // 5. UI-состояние
   const [activeTab, setActiveTab] = useState<Tab>('works');
   const [showingImport, setShowingImport] = useState(false);
   const [alert, setAlert] = useState<AlertMessage | null>(null);
 
+  // ═══════════════════════════════════════════════
+  // BOOTSTRAP ПРИ ВХОДЕ
+  // ═══════════════════════════════════════════════
+
   useEffect(() => {
     if (!user) {
+      // Пользователь вышел — очищаем всё
       clearWorks();
       clearReminders();
+      clearVehicles();
       return;
     }
 
@@ -51,21 +76,43 @@ function App() {
 
     async function bootstrap() {
       try {
-        const worksMigrated = await migrateWorksFromLocalStorage(currentUser.id);
+        // 1. Миграция localStorage → Supabase (старые данные из localStorage)
+        const worksMigrated = await migrateWorksFromLocalStorage(
+          currentUser.id,
+        );
         if (worksMigrated > 0) {
-          console.log(`✅ Мигрировано работ: ${worksMigrated}`);
+          console.log(
+            `✅ Мигрировано работ из localStorage: ${worksMigrated}`,
+          );
         }
 
         const remindersMigrated = await migrateRemindersFromLocalStorage(
           currentUser.id,
         );
         if (remindersMigrated > 0) {
-          console.log(`✅ Мигрировано напоминаний: ${remindersMigrated}`);
+          console.log(
+            `✅ Мигрировано напоминаний из localStorage: ${remindersMigrated}`,
+          );
         }
 
+        // 2. Загрузка транспортов ПЕРВЫМИ
+        await loadVehicles(currentUser.id);
+
+        // 3. Если нет ни одного ТС — создаём "Мою машину"
+        const defaultVehicle = await ensureDefaultVehicle(currentUser.id);
+
+        // 4. Миграция: привязываем старые работы/напоминания без vehicle_id
+        if (defaultVehicle) {
+          await migrateOrphanWorks(currentUser.id, defaultVehicle.id);
+          await migrateOrphanReminders(currentUser.id, defaultVehicle.id);
+        }
+
+        // 5. Загрузка работ и напоминаний (уже отфильтрованных по активному ТС)
         await loadWorks(currentUser.id);
         await loadReminders(currentUser.id);
 
+        // 6. Realtime-подписки
+        subscribeVehiclesRealtime(currentUser.id);
         subscribeWorksRealtime(currentUser.id);
         subscribeRemindersRealtime(currentUser.id);
       } catch (err) {
@@ -74,17 +121,12 @@ function App() {
     }
 
     bootstrap();
-  }, [
-    user,
-    loadWorks,
-    loadReminders,
-    subscribeWorksRealtime,
-    subscribeRemindersRealtime,
-    clearWorks,
-    clearReminders,
-    migrateWorksFromLocalStorage,
-    migrateRemindersFromLocalStorage,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // ═══════════════════════════════════════════════
+  // ФУНКЦИИ
+  // ═══════════════════════════════════════════════
 
   const showAlert = (title: string, message: string) => {
     setAlert({ title, message });
@@ -95,6 +137,7 @@ function App() {
       try {
         clearWorks();
         clearReminders();
+        clearVehicles();
         await signOut();
       } catch (err) {
         showAlert(
@@ -104,6 +147,10 @@ function App() {
       }
     }
   };
+
+  // ═══════════════════════════════════════════════
+  // РАННИЕ RETURN — ПОСЛЕ всех хуков
+  // ═══════════════════════════════════════════════
 
   if (loading) {
     return (
@@ -122,8 +169,13 @@ function App() {
     return <AuthScreen />;
   }
 
+  // ═══════════════════════════════════════════════
+  // ОСНОВНОЙ RETURN
+  // ═══════════════════════════════════════════════
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Шапка */}
       <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">CarTracker</h1>
@@ -144,12 +196,14 @@ function App() {
         </div>
       </header>
 
+      {/* Контент */}
       <main className="flex-1 overflow-y-auto p-4">
         {activeTab === 'works' && <WorksList />}
         {activeTab === 'stats' && <StatsView />}
         {activeTab === 'reminders' && <RemindersList />}
       </main>
 
+      {/* Нижняя навигация */}
       <nav className="bg-white border-t border-gray-200 flex sticky bottom-0 z-20">
         <TabButton
           active={activeTab === 'works'}
@@ -171,6 +225,7 @@ function App() {
         />
       </nav>
 
+      {/* Диалог импорта */}
       {showingImport && (
         <ImportDialog
           onClose={() => setShowingImport(false)}
@@ -179,6 +234,7 @@ function App() {
         />
       )}
 
+      {/* Alert */}
       {alert && (
         <AlertDialog
           title={alert.title}
@@ -189,6 +245,10 @@ function App() {
     </div>
   );
 }
+
+// ═══════════════════════════════════════════════
+// Вспомогательные компоненты
+// ═══════════════════════════════════════════════
 
 interface TabButtonProps {
   active: boolean;

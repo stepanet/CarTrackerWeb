@@ -48,11 +48,12 @@ export const STATUS_COLORS: Record<ReminderStatus, {
  */
 export interface Reminder {
   id: string;
+  vehicleId?: string | null;   // ← НОВОЕ
   title: string;
   icon: string;
   intervalKm: number;
   intervalMonths: number;
-  lastDate: string;        // ISO 8601
+  lastDate: string;
   lastMileage: number;
   isEnabled: boolean;
 }
@@ -66,9 +67,11 @@ export function createReminder(
   lastDate: Date,
   lastMileage: number,
   isEnabled: boolean = true,
+  vehicleId: string | null = null,
 ): Reminder {
   return {
     id: crypto.randomUUID(),
+    vehicleId,
     title: title.trim(),
     icon,
     intervalKm,

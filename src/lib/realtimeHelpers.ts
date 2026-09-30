@@ -56,3 +56,24 @@ export function subscribeToReminderChanges(
     )
     .subscribe();
 }
+/**
+ * Подписка на изменения таблицы vehicles.
+ */
+export function subscribeToVehicleChanges(
+  userId: string,
+  onChange: () => void,
+): RealtimeChannel {
+  return supabase
+    .channel('vehicles-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'vehicles',
+        filter: `user_id=eq.${userId}`,
+      },
+      () => onChange(),
+    )
+    .subscribe();
+}

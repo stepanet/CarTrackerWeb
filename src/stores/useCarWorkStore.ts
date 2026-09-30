@@ -9,39 +9,37 @@ import {
   updateWork,
   deleteWork,
   bulkInsertWorks,
+  migrateWorksToVehicle,
 } from '../lib/worksApi';
 import { subscribeToWorkChanges } from '../lib/realtimeHelpers';
+import { useVehicleStore } from './useVehicleStore';
 
 interface CarWorkState {
   works: CarWork[];
 
-  // Состояние
   isLoading: boolean;
   error: string | null;
   userId: string | null;
   realtimeChannel: RealtimeChannel | null;
 
-  // Загрузка / синхронизация
   loadWorks: (userId: string) => Promise<void>;
+  reload: () => Promise<void>;
   subscribeRealtime: (userId: string) => void;
   unsubscribeRealtime: () => void;
-  clearWorks: () => void;
+  clear: () => void;
 
-  // Миграция из localStorage (одноразово)
   migrateFromLocalStorage: (userId: string) => Promise<number>;
+  migrateOrphanWorks: (userId: string, vehicleId: string) => Promise<number>;
 
-  // CRUD работы
   add: (work: CarWork) => Promise<void>;
   update: (work: CarWork) => Promise<void>;
   remove: (id: string) => Promise<void>;
 
-  // CRUD подзаписи (локально, изменения уйдут через update)
   addSubItem: (workId: string, item: SubItem) => Promise<void>;
   updateSubItem: (workId: string, item: SubItem) => Promise<void>;
   removeSubItem: (workId: string, itemId: string) => Promise<void>;
   clearSubItems: (workId: string) => Promise<void>;
 
-  // Утилиты (синхронные, читают локальный кэш)
   getTotalCost: () => number;
   getTotalThisYear: () => number;
   getCurrentMileage: () => number;
@@ -61,7 +59,10 @@ export const useCarWorkStore = create<CarWorkState>((set, get) => ({
   loadWorks: async (userId: string) => {
     set({ isLoading: true, error: null, userId });
     try {
-      const works = await fetchAllWorks(userId);
+      // Берём активный транспорт
+      const activeVehicleId = useVehicleStore.getState().activeVehicleId;
+
+      const works = await fetchAllWorks(userId, activeVehicleId ?? undefined);
       set({ works: sortWorks(works), isLoading: false });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Ошибка загрузки';
@@ -70,14 +71,22 @@ export const useCarWorkStore = create<CarWorkState>((set, get) => ({
     }
   },
 
+  reload: async () => {
+    const { userId } = get();
+    if (!userId) return;
+    await get().loadWorks(userId);
+  },
+
   subscribeRealtime: (userId: string) => {
-    // Отписываемся от старой подписки, если есть
     get().unsubscribeRealtime();
 
     const channel = subscribeToWorkChanges(userId, async () => {
-      // При изменении с другого устройства — перезагружаем всё
       try {
-        const works = await fetchAllWorks(userId);
+        const activeVehicleId = useVehicleStore.getState().activeVehicleId;
+        const works = await fetchAllWorks(
+          userId,
+          activeVehicleId ?? undefined,
+        );
         set({ works: sortWorks(works) });
       } catch (err) {
         console.error('Ошибка realtime-синхронизации:', err);
@@ -95,7 +104,7 @@ export const useCarWorkStore = create<CarWorkState>((set, get) => ({
     }
   },
 
-  clearWorks: () => {
+  clear: () => {
     get().unsubscribeRealtime();
     set({ works: [], userId: null, error: null });
   },
@@ -117,40 +126,50 @@ export const useCarWorkStore = create<CarWorkState>((set, get) => ({
       const normalized = works.map((w) => normalizeCost(w));
       const result = await bulkInsertWorks(normalized, userId);
 
-      // Очищаем localStorage
       localStorage.removeItem('cartracker-works');
 
-      if (result.skipped > 0) {
-        console.log(
-          `ℹ️ Работы: добавлено ${result.inserted}, пропущено дубликатов ${result.skipped}`,
-        );
-      }
-
       return result.inserted;
+    } catch (err) {
+      console.error('Ошибка миграции:', err);
+      return 0;
+    }
+  },
+
+  migrateOrphanWorks: async (userId: string, vehicleId: string) => {
+    try {
+      const count = await migrateWorksToVehicle(userId, vehicleId);
+      if (count > 0) {
+        console.log(`🔄 Привязано работ к транспорту: ${count}`);
+      }
+      return count;
     } catch (err) {
       console.error('Ошибка миграции работ:', err);
       return 0;
     }
   },
 
-  // ─── CRUD работы ────────────────────────────
+  // ─── CRUD ───────────────────────────────────
 
   add: async (work) => {
     const { userId } = get();
     if (!userId) throw new Error('Не авторизован');
 
-    const normalized = normalizeCost(work);
+    // Проставляем активный транспорт, если не задан
+    const activeVehicleId = useVehicleStore.getState().activeVehicleId;
+    const withVehicle: CarWork = {
+      ...work,
+      vehicleId: work.vehicleId ?? activeVehicleId,
+    };
 
-    // 1. Оптимистично добавляем в UI
+    const normalized = normalizeCost(withVehicle);
+
     set((state) => ({
       works: sortWorks([...state.works, normalized]),
     }));
 
-    // 2. Сохраняем в Supabase
     try {
       await createWork(normalized, userId);
     } catch (err) {
-      // Откатываем при ошибке
       set((state) => ({
         works: state.works.filter((w) => w.id !== normalized.id),
       }));
@@ -165,18 +184,15 @@ export const useCarWorkStore = create<CarWorkState>((set, get) => ({
     const normalized = normalizeCost(work);
     const previous = get().works.find((w) => w.id === work.id);
 
-    // 1. Оптимистично обновляем
     set((state) => ({
       works: sortWorks(
         state.works.map((w) => (w.id === normalized.id ? normalized : w)),
       ),
     }));
 
-    // 2. Сохраняем в Supabase
     try {
       await updateWork(normalized, userId);
     } catch (err) {
-      // Откатываем
       if (previous) {
         set((state) => ({
           works: sortWorks(
@@ -191,16 +207,13 @@ export const useCarWorkStore = create<CarWorkState>((set, get) => ({
   remove: async (id) => {
     const previous = get().works.find((w) => w.id === id);
 
-    // 1. Оптимистично удаляем
     set((state) => ({
       works: state.works.filter((w) => w.id !== id),
     }));
 
-    // 2. Удаляем из Supabase
     try {
       await deleteWork(id);
     } catch (err) {
-      // Откатываем
       if (previous) {
         set((state) => ({
           works: sortWorks([...state.works, previous]),
@@ -210,12 +223,11 @@ export const useCarWorkStore = create<CarWorkState>((set, get) => ({
     }
   },
 
-  // ─── CRUD подзаписи (локально + sync через update) ───
+  // ─── Подзаписи ─────────────────────────────
 
   addSubItem: async (workId, item) => {
     const work = get().works.find((w) => w.id === workId);
     if (!work) return;
-
     const subWorks = [...(work.subWorks ?? []), item];
     await get().update(recalculateCost({ ...work, subWorks }));
   },
@@ -223,7 +235,6 @@ export const useCarWorkStore = create<CarWorkState>((set, get) => ({
   updateSubItem: async (workId, item) => {
     const work = get().works.find((w) => w.id === workId);
     if (!work) return;
-
     const subWorks = (work.subWorks ?? []).map((si) =>
       si.id === item.id ? item : si,
     );
@@ -233,7 +244,6 @@ export const useCarWorkStore = create<CarWorkState>((set, get) => ({
   removeSubItem: async (workId, itemId) => {
     const work = get().works.find((w) => w.id === workId);
     if (!work) return;
-
     const subWorks = (work.subWorks ?? []).filter((si) => si.id !== itemId);
     await get().update(recalculateCost({ ...work, subWorks }));
   },
@@ -241,11 +251,10 @@ export const useCarWorkStore = create<CarWorkState>((set, get) => ({
   clearSubItems: async (workId) => {
     const work = get().works.find((w) => w.id === workId);
     if (!work) return;
-
     await get().update({ ...work, subWorks: [] });
   },
 
-  // ─── Утилиты (синхронные, читают кэш) ───────
+  // ─── Утилиты ───────────────────────────────
 
   getTotalCost: () =>
     get().works.filter((w) => w.isDone).reduce((sum, w) => sum + w.cost, 0),
