@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import type { Vehicle, VehicleType } from '../models/Vehicle';
+import type { Vehicle } from '../models/Vehicle';
 import { createVehicle as createVehicleModel } from '../models/Vehicle';
 import {
   fetchAllVehicles,
