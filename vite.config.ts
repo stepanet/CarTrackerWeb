@@ -43,6 +43,11 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallback: '/index.html',
+        // ↓↓↓ НОВЫЕ НАСТРОЙКИ ↓↓↓
+        cleanupOutdatedCaches: true,   // удаляем старые кэши при обновлении
+        skipWaiting: true,             // новый Service Worker активируется сразу
+        clientsClaim: true,            // управляем всеми вкладками
+        // ↑↑↑ НОВЫЕ НАСТРОЙКИ ↑↑↑
       },
       devOptions: {
         enabled: false,  // PWA работает только в production-сборке
