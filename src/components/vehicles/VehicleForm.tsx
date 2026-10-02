@@ -4,6 +4,7 @@ import {
   ALL_VEHICLE_TYPES,
   VEHICLE_TYPE_LABELS,
   VEHICLE_TYPE_ICONS,
+  VEHICLE_ICON_MAP,        // ← ДОБАВИТЬ
   createVehicle,
 } from '../../models/Vehicle';
 
@@ -14,9 +15,14 @@ interface VehicleFormProps {
 }
 
 const ICON_OPTIONS = [
-  { key: 'car', label: 'Машина' },
-  { key: 'bike', label: 'Мотоцикл' },
-  { key: 'truck', label: 'Фургон' },
+  { key: 'car', label: 'Машина', icon: 'Car' },
+  { key: 'bike', label: 'Мотоцикл', icon: 'Bike' },
+  { key: 'truck', label: 'Фургон', icon: 'Truck' },
+  { key: 'snowflake', label: 'Снегоуборщик', icon: 'Snowflake' },
+  { key: 'sprout', label: 'Газонокосилка', icon: 'Sprout' },
+  { key: 'tractor', label: 'Мотоблок', icon: 'Tractor' },
+  { key: 'zap', label: 'Генератор', icon: 'Zap' },
+  { key: 'anchor', label: 'Лодка', icon: 'Anchor' },
 ];
 
 export function VehicleForm({ vehicle, onSave, onCancel }: VehicleFormProps) {
@@ -164,32 +170,28 @@ export function VehicleForm({ vehicle, onSave, onCancel }: VehicleFormProps) {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Иконка
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              {ICON_OPTIONS.map((opt) => {
-                const Icon = VEHICLE_TYPE_ICONS[
-                  opt.key === 'bike'
-                    ? 'motorcycle'
-                    : opt.key === 'truck'
-                      ? 'other'
-                      : 'car'
-                ];
-                return (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    onClick={() => setIcon(opt.key)}
-                    className={`flex flex-col items-center justify-center gap-1 p-2.5 rounded-lg border-2 transition-colors ${
-                      icon === opt.key
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="text-xs">{opt.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+<div className="grid grid-cols-4 gap-2">
+  {ICON_OPTIONS.map((opt) => {
+    const Icon = VEHICLE_ICON_MAP[opt.key] ?? Car;
+    return (
+      <button
+        key={opt.key}
+        type="button"
+        onClick={() => setIcon(opt.key)}
+        className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg border-2 transition-colors ${
+          icon === opt.key
+            ? 'border-blue-500 bg-blue-50 text-blue-700'
+            : 'border-gray-200 text-gray-500 hover:border-gray-300'
+        }`}
+      >
+        <Icon className="w-5 h-5" />
+        <span className="text-[10px] leading-tight text-center">
+          {opt.label}
+        </span>
+      </button>
+    );
+  })}
+</div>
           </div>
 
           {/* Госномер */}

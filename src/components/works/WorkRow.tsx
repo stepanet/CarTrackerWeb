@@ -1,6 +1,6 @@
 import type { CarWork } from '../../models/CarWork';
 import { CATEGORY_ICONS } from '../../models/CarWork';
-import { Trash2 } from 'lucide-react';
+import { Wrench, Package, Trash2 } from 'lucide-react';
 
 interface WorkRowProps {
   work: CarWork;
@@ -45,19 +45,21 @@ export function WorkRow({ work, onEdit, onDelete }: WorkRowProps) {
         </p>
 
         {(worksCount > 0 || partsCount > 0) && (
-          <div className="flex items-center gap-2 mt-0.5 text-xs">
-            {worksCount > 0 && (
-              <span className="flex items-center gap-0.5 text-blue-600">
-                <span className="font-medium">{worksCount}</span>
-              </span>
-            )}
-            {partsCount > 0 && (
-              <span className="flex items-center gap-0.5 text-orange-600">
-                <span className="font-medium">{partsCount}</span>
-              </span>
-            )}
-          </div>
-        )}
+  <div className="flex items-center gap-2 mt-0.5 text-xs">
+    {worksCount > 0 && (
+      <span className="flex items-center gap-0.5 text-blue-600">
+        <Wrench className="w-3 h-3" />
+        <span className="font-medium">{worksCount}</span>
+      </span>
+    )}
+    {partsCount > 0 && (
+      <span className="flex items-center gap-0.5 text-orange-600">
+        <Package className="w-3 h-3" />
+        <span className="font-medium">{partsCount}</span>
+      </span>
+    )}
+  </div>
+)}
       </div>
 
       {/* Стоимость + действия */}

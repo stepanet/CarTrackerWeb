@@ -1,21 +1,45 @@
 import {
   Car,
   Bike,
+  Snowflake,
+  Sprout,
+  Tractor,
+  Zap,
+  Anchor,
   Truck,
+  Box,
   type LucideIcon,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════
-// Тип транспорта
+// Тип транспорта / техники
 // ═══════════════════════════════════════════════
 
-export type VehicleType = 'car' | 'motorcycle' | 'scooter' | 'other';
+export type VehicleType =
+  | 'car'
+  | 'motorcycle'
+  | 'scooter'
+  | 'snowblower'
+  | 'lawnmower'
+  | 'tiller'
+  | 'generator'
+  | 'atv'
+  | 'boat'
+  | 'trailer'
+  | 'other';
 
 /** Список всех типов (для UI) */
 export const ALL_VEHICLE_TYPES: VehicleType[] = [
   'car',
   'motorcycle',
   'scooter',
+  'snowblower',
+  'lawnmower',
+  'tiller',
+  'generator',
+  'atv',
+  'boat',
+  'trailer',
   'other',
 ];
 
@@ -24,22 +48,45 @@ export const VEHICLE_TYPE_LABELS: Record<VehicleType, string> = {
   car: 'Машина',
   motorcycle: 'Мотоцикл',
   scooter: 'Скутер',
+  snowblower: 'Снегоуборщик',
+  lawnmower: 'Газонокосилка',
+  tiller: 'Мотоблок',
+  generator: 'Генератор',
+  atv: 'Квадроцикл',
+  boat: 'Лодка',
+  trailer: 'Прицеп',
   other: 'Другое',
 };
 
-/** Иконки для UI (Lucide) */
+/** Иконки Lucide для UI */
 export const VEHICLE_TYPE_ICONS: Record<VehicleType, LucideIcon> = {
   car: Car,
   motorcycle: Bike,
-  scooter: Bike, // заменим позже, если понадобится отдельная
-  other: Truck,
+  scooter: Bike,
+  snowblower: Snowflake,
+  lawnmower: Sprout,
+  tiller: Tractor,
+  generator: Zap,
+  atv: Car,
+  boat: Anchor,
+  trailer: Truck,
+  other: Box,
 };
 
-/** Иконки Lucide для выбора в форме (соответствуют ключам, которые хранятся в БД) */
+/**
+ * Иконки для ключа `icon`, который хранится в БД.
+ * Совместимо со старыми записями (car, bike, truck).
+ */
 export const VEHICLE_ICON_MAP: Record<string, LucideIcon> = {
   car: Car,
   bike: Bike,
   truck: Truck,
+  snowflake: Snowflake,
+  sprout: Sprout,
+  tractor: Tractor,
+  zap: Zap,
+  anchor: Anchor,
+  box: Box,
 };
 
 // ═══════════════════════════════════════════════
@@ -47,23 +94,22 @@ export const VEHICLE_ICON_MAP: Record<string, LucideIcon> = {
 // ═══════════════════════════════════════════════
 
 export interface Vehicle {
-  id: string;                     // UUID
-  name: string;                   // "Toyota Camry" или "Моя машина"
+  id: string;
+  name: string;
   type: VehicleType;
-  plate: string;                  // госномер
-  year?: number;                  // год выпуска (опционально)
-  icon: string;                   // ключ иконки: 'car', 'bike', 'truck'
-  initialMileage: number;         // начальный пробег (пробег при добавлении ТС)
-  isDefault: boolean;             // "по умолчанию" — куда падают работы без vehicle_id
-  createdAt: string;              // ISO 8601
-  updatedAt: string;              // ISO 8601
+  plate: string;
+  year?: number;
+  icon: string;          // ключ: 'car', 'snowflake', 'sprout' и т.д.
+  initialMileage: number;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ═══════════════════════════════════════════════
 // Хелперы
 // ═══════════════════════════════════════════════
 
-/** Создать новый транспорт с дефолтными значениями */
 export function createVehicle(
   name: string,
   type: VehicleType,
@@ -87,13 +133,11 @@ export function createVehicle(
   };
 }
 
-/** Отображаемое имя: если имя пустое — используем тип */
 export function vehicleDisplayName(vehicle: Vehicle): string {
   if (vehicle.name.trim()) return vehicle.name;
   return VEHICLE_TYPE_LABELS[vehicle.type];
 }
 
-/** Описание: "Toyota Camry · А123БВ 77" */
 export function vehicleSubtitle(vehicle: Vehicle): string {
   const parts: string[] = [];
   if (vehicle.plate) parts.push(vehicle.plate);
@@ -101,7 +145,6 @@ export function vehicleSubtitle(vehicle: Vehicle): string {
   return parts.join(' · ');
 }
 
-/** Иконка по ключу */
 export function vehicleIcon(key: string): LucideIcon {
   return VEHICLE_ICON_MAP[key] ?? Car;
 }
