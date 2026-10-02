@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Vehicle, VehicleType } from '../../models/Vehicle';
+import { Car } from 'lucide-react';
 import {
   ALL_VEHICLE_TYPES,
   VEHICLE_TYPE_LABELS,
