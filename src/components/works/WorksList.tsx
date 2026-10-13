@@ -5,13 +5,11 @@ import type { CarWork, WorkCategory } from '../../models/CarWork';
 import { WorkRow } from './WorkRow';
 import { WorkForm } from './WorkForm';
 import { WorkDetail } from './WorkDetail';
+import { ScreenHeader } from '../ScreenHeader';
 import {
   Car,
   Search,
   X,
-  Banknote,
-  Calendar,
-  ListTodo,
   Loader2,
   Plus,
 } from 'lucide-react';
@@ -43,6 +41,12 @@ export function WorksList() {
       .filter((w) => w.isDone && new Date(w.date).getFullYear() === year)
       .reduce((s, w) => s + w.cost, 0);
   }, [works]);
+
+  // Подзаголовок: «142 365 ₽ за 2026»
+  const screenSubtitle = useMemo(() => {
+    const year = new Date().getFullYear();
+    return `${formatMoney(totalThisYear)} ₽ за ${year}`;
+  }, [totalThisYear]);
 
   // Фильтрация
   const filteredWorks = useMemo(() => {
@@ -100,8 +104,6 @@ export function WorksList() {
     setEditingWork(null);
   };
 
-  const formatMoney = (value: number) =>
-    value.toLocaleString('ru-RU', { maximumFractionDigits: 0 });
 
   return (
     <>
@@ -134,31 +136,12 @@ export function WorksList() {
           </div>
         )}
 
-        {/* Шапка со статистикой */}
-        <div className="grid grid-cols-3 gap-2">
-          <StatCard
-            label="Всего"
-            value={`${formatMoney(totalCost)} ₽`}
-            icon={<Banknote className="w-5 h-5" />}
-            iconColor="text-blue-500"
-          />
-          <StatCard
-            label="За год"
-            value={`${formatMoney(totalThisYear)} ₽`}
-            icon={<Calendar className="w-5 h-5" />}
-            iconColor="text-green-500"
-          />
-          <StatCard
-            label="Записей"
-            value={String(works.length)}
-            icon={<ListTodo className="w-5 h-5" />}
-            iconColor="text-purple-500"
-          />
-        </div>
+        {/* Большой заголовок + сумма за год */}
+        <ScreenHeader title="Мои работы" subtitle={screenSubtitle} />
 
         {/* Поиск */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <div className="relative px-4">
+          <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             value={searchText}
@@ -169,7 +152,7 @@ export function WorksList() {
           {searchText && (
             <button
               onClick={() => setSearchText('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+              className="absolute right-7 top-1/2 -translate-y-1/2 text-gray-400"
             >
               <X className="w-4 h-4" />
             </button>
@@ -177,7 +160,7 @@ export function WorksList() {
         </div>
 
         {/* Фильтр по категориям */}
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+        <div className="flex gap-2 overflow-x-auto pb-1 px-4">
           <FilterChip
             label="Все"
             active={selectedCategory === null}
@@ -200,27 +183,29 @@ export function WorksList() {
         </div>
 
         {/* Список работ */}
-        {filteredWorks.length === 0 ? (
-          <EmptyState
-            hasWorks={works.length > 0}
-            isLoading={isLoading}
-            onAdd={openAddForm}
-          />
-        ) : (
-          <div className="space-y-2">
-            {filteredWorks.map((work) => (
-              <WorkRow
-                key={work.id}
-                work={work}
-                onEdit={() => setViewingWork(work)}
-                onDelete={(id) => {
-                  const w = works.find((x) => x.id === id);
-                  if (w) handleDelete(w);
-                }}
-              />
-            ))}
-          </div>
-        )}
+        <div className="px-4">
+          {filteredWorks.length === 0 ? (
+            <EmptyState
+              hasWorks={works.length > 0}
+              isLoading={isLoading}
+              onAdd={openAddForm}
+            />
+          ) : (
+            <div className="space-y-2">
+              {filteredWorks.map((work) => (
+                <WorkRow
+                  key={work.id}
+                  work={work}
+                  onEdit={() => setViewingWork(work)}
+                  onDelete={(id) => {
+                    const w = works.find((x) => x.id === id);
+                    if (w) handleDelete(w);
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Плавающая кнопка "+" */}
@@ -255,23 +240,6 @@ export function WorksList() {
 }
 
 // ─── Вспомогательные компоненты ──────────────────
-
-interface StatCardProps {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  iconColor?: string;
-}
-
-function StatCard({ label, value, icon, iconColor }: StatCardProps) {
-  return (
-    <div className="bg-white rounded-xl p-3 shadow-sm">
-      <div className={`mb-1 ${iconColor ?? 'text-gray-500'}`}>{icon}</div>
-      <p className="font-semibold text-gray-900 text-sm truncate">{value}</p>
-      <p className="text-xs text-gray-500">{label}</p>
-    </div>
-  );
-}
 
 interface FilterChipProps {
   label: string;
@@ -326,4 +294,10 @@ function EmptyState({ hasWorks, isLoading, onAdd }: EmptyStateProps) {
       )}
     </div>
   );
+}
+
+// ─── Вспомогательные функции ──────────────────
+
+function formatMoney(value: number): string {
+  return value.toLocaleString('ru-RU', { maximumFractionDigits: 0 });
 }
