@@ -29,12 +29,6 @@ export function WorksList() {
   const [viewingWork, setViewingWork] = useState<CarWork | null>(null);
   const [savingError, setSavingError] = useState<string | null>(null);
 
-  // Статистика
-  const totalCost = useMemo(
-    () => works.filter((w) => w.isDone).reduce((s, w) => s + w.cost, 0),
-    [works],
-  );
-
   const totalThisYear = useMemo(() => {
     const year = new Date().getFullYear();
     return works
