@@ -244,3 +244,103 @@ export function getTotalPartsCost(works: CarWork[]): number {
     .filter((item) => item.type === 'part')
     .reduce((sum, item) => sum + getSubItemTotal(item), 0);
 }
+
+// ═══════════════════════════════════════════════
+// Сравнение расходов по годам (аналог iOS v3.2)
+// ═══════════════════════════════════════════════
+
+export interface MonthComparison {
+  month: number;          // 0..11
+  label: string;          // "сен"
+  fullLabel: string;      // "сентябрь"
+  currentTotal: number;   // расходы в текущем году
+  previousTotal: number;  // расходы в прошлом году
+  diff: number;           // currentTotal - previousTotal
+  percentChange: number;  // ((curr - prev) / prev) * 100, или 0
+}
+
+export interface YearlyComparisonResult {
+  currentYear: number;
+  previousYear: number;
+  months: MonthComparison[];
+  currentYearTotal: number;
+  previousYearTotal: number;
+  totalDiff: number;
+  totalPercentChange: number;
+  hasAnyData: boolean;
+}
+
+/**
+ * Сравнение расходов по месяцам между `currentYear` и `currentYear - 1`.
+ * Возвращает 12 месяцев, даже если в каких-то нет данных.
+ */
+export function getYearlyComparison(
+  works: CarWork[],
+  currentYear: number,
+): YearlyComparisonResult {
+  const previousYear = currentYear - 1;
+  const months: MonthComparison[] = [];
+
+  const done = works.filter((w) => w.isDone);
+
+  for (let m = 0; m < 12; m++) {
+    const currentTotal = sumForMonth(done, currentYear, m);
+    const previousTotal = sumForMonth(done, previousYear, m);
+
+    const diff = currentTotal - previousTotal;
+    const percentChange =
+      previousTotal > 0 ? (diff / previousTotal) * 100 : 0;
+
+    months.push({
+      month: m,
+      label: shortMonthName(m),
+      fullLabel: fullMonthName(m),
+      currentTotal,
+      previousTotal,
+      diff,
+      percentChange,
+    });
+  }
+
+  const currentYearTotal = months.reduce((s, m) => s + m.currentTotal, 0);
+  const previousYearTotal = months.reduce((s, m) => s + m.previousTotal, 0);
+  const totalDiff = currentYearTotal - previousYearTotal;
+  const totalPercentChange =
+    previousYearTotal > 0 ? (totalDiff / previousYearTotal) * 100 : 0;
+
+  return {
+    currentYear,
+    previousYear,
+    months,
+    currentYearTotal,
+    previousYearTotal,
+    totalDiff,
+    totalPercentChange,
+    hasAnyData: currentYearTotal > 0 || previousYearTotal > 0,
+  };
+}
+
+function sumForMonth(works: CarWork[], year: number, month: number): number {
+  return works
+    .filter((w) => {
+      const d = new Date(w.date);
+      return d.getFullYear() === year && d.getMonth() === month;
+    })
+    .reduce((s, w) => s + w.cost, 0);
+}
+
+/**
+ * Список годов, в которых есть данные (для переключателя).
+ * Всегда включает текущий год, даже если данных нет.
+ */
+export function getAvailableYears(works: CarWork[]): number[] {
+  const years = new Set<number>();
+  years.add(new Date().getFullYear());
+
+  for (const w of works) {
+    if (!w.isDone) continue;
+    years.add(new Date(w.date).getFullYear());
+  }
+
+  return Array.from(years).sort((a, b) => b - a); // по убыванию
+}

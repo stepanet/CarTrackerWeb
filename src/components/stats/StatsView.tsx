@@ -15,6 +15,7 @@ import {
 import { MonthlyChart } from './MonthlyChart';
 import { CategoryChart } from './CategoryChart';
 import { TopItemsChart } from './TopItemsChart';
+import { YearComparisonChart } from './YearComparisonChart';
 
 export function StatsView() {
   const works = useCarWorkStore((s) => s.works);
@@ -105,6 +106,7 @@ export function StatsView() {
 
       {/* ─── Графики ─── */}
       <MonthlyChart works={works} />
+      <YearComparisonChart works={works} />   {/* ← НОВОЕ */}
       <CategoryChart works={works} />
       <TopItemsChart works={works} />
     </div>
