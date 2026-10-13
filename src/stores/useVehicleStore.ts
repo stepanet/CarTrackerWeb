@@ -196,26 +196,29 @@ export const useVehicleStore = create<VehicleState>()(
       },
 
       remove: async (id) => {
-        const previous = get().vehicles;
+  const previousVehicles = get().vehicles;
+  const previousActiveId = get().activeVehicleId;
 
-        set((state) => ({
-          vehicles: state.vehicles.filter((v) => v.id !== id),
-        }));
+  set((state) => ({
+    vehicles: state.vehicles.filter((v) => v.id !== id),
+  }));
 
-        // Если удалили активный — выбираем следующий
-        const { activeVehicleId } = get();
-        if (activeVehicleId === id) {
-          const next = get().vehicles[0]?.id ?? null;
-          set({ activeVehicleId: next });
-        }
+  const { activeVehicleId } = get();
+  if (activeVehicleId === id) {
+    const next = get().vehicles[0]?.id ?? null;
+    set({ activeVehicleId: next });
+  }
 
-        try {
-          await deleteVehicleApi(id);
-        } catch (err) {
-          set({ vehicles: previous });
-          throw err;
-        }
-      },
+  try {
+    await deleteVehicleApi(id);
+  } catch (err) {
+    set({
+      vehicles: previousVehicles,
+      activeVehicleId: previousActiveId,
+    });
+    throw err;
+  }
+},
 
       // ═══════════════════════════════════════════
       // Создание дефолтного транспорта

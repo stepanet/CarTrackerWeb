@@ -1,16 +1,12 @@
 import { supabase } from './supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
-/**
- * Подписка на изменения таблиц works и sub_works.
- * При любом изменении вызывается onChange.
- */
 export function subscribeToWorkChanges(
   userId: string,
   onChange: () => void,
 ): RealtimeChannel {
   const channel = supabase
-    .channel('works-changes')
+    .channel(`works-changes-${userId}-${Date.now()}`)
     .on(
       'postgres_changes',
       {
@@ -21,59 +17,39 @@ export function subscribeToWorkChanges(
       },
       () => onChange(),
     )
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'sub_works',
-      },
-      () => onChange(),
-    )
+    // sub_works убран — works-событие триггерит fetchAllWorks,
+    // который подтянет и подработы
     .subscribe();
 
   return channel;
 }
 
-/**
- * Подписка на изменения таблицы reminders.
- */
 export function subscribeToReminderChanges(
   userId: string,
   onChange: () => void,
 ): RealtimeChannel {
   return supabase
-    .channel('reminders-changes')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'reminders',
-        filter: `user_id=eq.${userId}`,
-      },
-      () => onChange(),
-    )
+    .channel(`reminders-changes-${userId}-${Date.now()}`)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'reminders',
+      filter: `user_id=eq.${userId}`,
+    }, () => onChange())
     .subscribe();
 }
-/**
- * Подписка на изменения таблицы vehicles.
- */
+
 export function subscribeToVehicleChanges(
   userId: string,
   onChange: () => void,
 ): RealtimeChannel {
   return supabase
-    .channel('vehicles-changes')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'vehicles',
-        filter: `user_id=eq.${userId}`,
-      },
-      () => onChange(),
-    )
+    .channel(`vehicles-changes-${userId}-${Date.now()}`)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'vehicles',
+      filter: `user_id=eq.${userId}`,
+    }, () => onChange())
     .subscribe();
 }

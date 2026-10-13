@@ -27,6 +27,7 @@ function App() {
   // Работы
   const loadWorks = useCarWorkStore((s) => s.loadWorks);
   const subscribeWorksRealtime = useCarWorkStore((s) => s.subscribeRealtime);
+  const unsubscribeWorksRealtime = useCarWorkStore((s) => s.unsubscribeRealtime);
   const clearWorks = useCarWorkStore((s) => s.clear);
   const migrateWorksFromLocalStorage = useCarWorkStore(
     (s) => s.migrateFromLocalStorage,
@@ -37,6 +38,9 @@ function App() {
   const loadReminders = useReminderStore((s) => s.loadReminders);
   const subscribeRemindersRealtime = useReminderStore(
     (s) => s.subscribeRealtime,
+  );
+  const unsubscribeRemindersRealtime = useReminderStore(
+    (s) => s.unsubscribeRealtime,
   );
   const clearReminders = useReminderStore((s) => s.clear);
   const migrateRemindersFromLocalStorage = useReminderStore(
@@ -50,6 +54,9 @@ function App() {
   const loadVehicles = useVehicleStore((s) => s.loadVehicles);
   const ensureDefaultVehicle = useVehicleStore((s) => s.ensureDefaultVehicle);
   const subscribeVehiclesRealtime = useVehicleStore((s) => s.subscribeRealtime);
+  const unsubscribeVehiclesRealtime = useVehicleStore(
+    (s) => s.unsubscribeRealtime,
+  );
   const clearVehicles = useVehicleStore((s) => s.clear);
   const activeVehicleId = useVehicleStore((s) => s.activeVehicleId);
 
@@ -68,34 +75,53 @@ function App() {
     }
 
     const currentUser = user;
+    let cancelled = false;
 
     async function bootstrap() {
       try {
+        // 1. Миграции из localStorage (до всего)
         await migrateWorksFromLocalStorage(currentUser.id);
+        if (cancelled) return;
         await migrateRemindersFromLocalStorage(currentUser.id);
+        if (cancelled) return;
 
+        // 2. Загружаем транспорт
         await loadVehicles(currentUser.id);
+        if (cancelled) return;
         const defaultVehicle = await ensureDefaultVehicle(currentUser.id);
+        if (cancelled) return;
 
+        // 3. Мигрируем orphans к дефолтному ТС
         if (defaultVehicle) {
           await migrateOrphanWorks(currentUser.id, defaultVehicle.id);
+          if (cancelled) return;
           await migrateOrphanReminders(currentUser.id, defaultVehicle.id);
+          if (cancelled) return;
         }
 
-        await loadWorks(currentUser.id);
-        await loadReminders(currentUser.id);
-
+        // 4. ПОДПИСКИ ДО ЗАГРУЗКИ — чтобы не потерять события
         subscribeVehiclesRealtime(currentUser.id);
         subscribeWorksRealtime(currentUser.id);
         subscribeRemindersRealtime(currentUser.id);
+
+        // 5. Загружаем данные
+        await loadWorks(currentUser.id);
+        if (cancelled) return;
+        await loadReminders(currentUser.id);
       } catch (err) {
         console.error('Ошибка инициализации:', err);
       }
     }
 
     bootstrap();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+
+    return () => {
+      cancelled = true;
+      unsubscribeWorksRealtime();
+      unsubscribeRemindersRealtime();
+      unsubscribeVehiclesRealtime();
+    };
+  }, [user?.id]);
 
   // ─── Перезагрузка данных при смене активного ТС ───
   useEffect(() => {
@@ -123,19 +149,22 @@ function App() {
   };
 
   const handleSignOut = async () => {
-    if (confirm('Выйти из аккаунта?')) {
-      try {
-        clearWorks();
-        clearReminders();
-        clearVehicles();
-        await signOut();
-      } catch (err) {
-        showAlert(
-          'Ошибка',
-          err instanceof Error ? err.message : 'Не удалось выйти',
-        );
-      }
+    if (!confirm('Выйти из аккаунта?')) return;
+
+    try {
+      await signOut();
+    } catch (err) {
+      showAlert(
+        'Ошибка',
+        err instanceof Error ? err.message : 'Не удалось выйти',
+      );
+      return;
     }
+
+    // Чистим только после успешного signOut
+    clearWorks();
+    clearReminders();
+    clearVehicles();
   };
 
   // ─── Ранние return ──────────────────────────
