@@ -15,6 +15,7 @@ import {
   getYearlyComparison,
   getAvailableYears,
 } from '../../stores/statsHelpers';
+import { SectionHeader } from '../SectionHeader';
 
 interface YearComparisonChartProps {
   works: CarWork[];
@@ -32,60 +33,65 @@ export function YearComparisonChart({ works }: YearComparisonChartProps) {
     [works, selectedYear],
   );
 
-  const { months, currentYearTotal, previousYearTotal, totalDiff, totalPercentChange, hasAnyData } =
-    result;
+  const {
+    months,
+    currentYearTotal,
+    previousYearTotal,
+    totalDiff,
+    totalPercentChange,
+    hasAnyData,
+  } = result;
 
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm">
-      {/* Заголовок + переключатель года */}
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h3 className="font-semibold text-gray-900">Сравнение по годам</h3>
+    <div className="bg-white rounded-2xl p-3.5 shadow-sm">
+      <SectionHeader
+        title="Сравнение по годам"
+        trailing={
+          <div className="relative">
+            <button
+              onClick={() => setShowYearPicker((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-1 text-sm font-medium bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              <span>{selectedYear}</span>
+              <span className="text-gray-400 text-xs">
+                vs {selectedYear - 1}
+              </span>
+            </button>
 
-        <div className="relative">
-          <button
-            onClick={() => setShowYearPicker((v) => !v)}
-            className="flex items-center gap-1.5 px-3 py-1 text-sm font-medium bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            <span>{selectedYear}</span>
-            <span className="text-gray-400 text-xs">vs {selectedYear - 1}</span>
-          </button>
-
-          {showYearPicker && (
-            <>
-              {/* Затемнение */}
-              <div
-                className="fixed inset-0 z-30"
-                onClick={() => setShowYearPicker(false)}
-              />
-              {/* Дропдаун */}
-              <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-40 min-w-[100px]">
-                {availableYears.map((year) => (
-                  <button
-                    key={year}
-                    onClick={() => {
-                      setSelectedYear(year);
-                      setShowYearPicker(false);
-                    }}
-                    className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 ${
-                      year === selectedYear
-                        ? 'text-blue-600 font-medium'
-                        : 'text-gray-700'
-                    }`}
-                  >
-                    {year}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+            {showYearPicker && (
+              <>
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={() => setShowYearPicker(false)}
+                />
+                <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-40 min-w-[100px]">
+                  {availableYears.map((year) => (
+                    <button
+                      key={year}
+                      onClick={() => {
+                        setSelectedYear(year);
+                        setShowYearPicker(false);
+                      }}
+                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 ${
+                        year === selectedYear
+                          ? 'text-blue-600 font-medium'
+                          : 'text-gray-700'
+                      }`}
+                    >
+                      {year}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        }
+      />
 
       {!hasAnyData ? (
         <EmptyChart />
       ) : (
         <>
-          {/* Итоговая разница */}
           <div className="mb-3 p-3 bg-gray-50 rounded-lg">
             <div className="flex items-center justify-between gap-3">
               <div className="flex-1 min-w-0">
@@ -104,7 +110,6 @@ export function YearComparisonChart({ works }: YearComparisonChartProps) {
             </div>
           </div>
 
-          {/* График */}
           <div className="h-56 -ml-2">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -214,8 +219,6 @@ function EmptyChart() {
     </div>
   );
 }
-
-// ─── Tooltip ──────────────────────────────────
 
 interface TooltipPayload {
   payload: {

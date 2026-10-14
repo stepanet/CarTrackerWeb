@@ -4,6 +4,7 @@ import { useReminderStore, getStatus } from '../../stores/useReminderStore';
 import type { Reminder } from '../../models/Reminder';
 import { ReminderCard } from './ReminderCard';
 import { ReminderForm } from './ReminderForm';
+import { ScreenHeader } from '../ScreenHeader';
 
 export function RemindersList() {
   const works = useCarWorkStore((s) => s.works);
@@ -46,6 +47,16 @@ export function RemindersList() {
     }
     return { overdue, soon, ok };
   }, [reminders, currentMileage]);
+
+  // Подзаголовок экрана (как в iOS)
+  const subtitle = useMemo(() => {
+    if (reminders.length === 0) return 'Пока нет напоминаний';
+    const parts: string[] = [];
+    if (summary.overdue > 0) parts.push(`${summary.overdue} пора`);
+    if (summary.soon > 0) parts.push(`${summary.soon} скоро`);
+    if (summary.ok > 0) parts.push(`${summary.ok} в порядке`);
+    return parts.length > 0 ? parts.join(' • ') : 'Все в порядке';
+  }, [reminders.length, summary]);
 
   // ─── Действия ───────────────────────────────
 
@@ -131,27 +142,31 @@ export function RemindersList() {
   if (reminders.length === 0) {
     return (
       <>
-        <div className="bg-white rounded-xl p-8 text-center shadow-sm">
-          <p className="text-5xl mb-3">🔔</p>
-          <p className="text-gray-600 font-medium mb-1">
-            Пока нет напоминаний
-          </p>
-          <p className="text-sm text-gray-400 mb-4">
-            Создайте правило — приложение подскажет, когда пора делать ТО
-          </p>
-          <div className="flex flex-col gap-2 max-w-xs mx-auto">
-            <button
-              onClick={installDefaults}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
-            >
-              ✨ Установить типовой набор
-            </button>
-            <button
-              onClick={openAddForm}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200"
-            >
-              Создать своё
-            </button>
+        <div className="space-y-4 pb-4">
+          <ScreenHeader title="Напоминания" subtitle={subtitle} />
+
+          <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
+            <p className="text-5xl mb-3">🔔</p>
+            <p className="text-gray-600 font-medium mb-1">
+              Пока нет напоминаний
+            </p>
+            <p className="text-sm text-gray-400 mb-4">
+              Создайте правило — приложение подскажет, когда пора делать ТО
+            </p>
+            <div className="flex flex-col gap-2 max-w-xs mx-auto">
+              <button
+                onClick={installDefaults}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+              >
+                ✨ Установить типовой набор
+              </button>
+              <button
+                onClick={openAddForm}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200"
+              >
+                Создать своё
+              </button>
+            </div>
           </div>
         </div>
 
@@ -171,6 +186,9 @@ export function RemindersList() {
   return (
     <>
       <div className="space-y-4 pb-4">
+        {/* Заголовок экрана */}
+        <ScreenHeader title="Напоминания" subtitle={subtitle} />
+
         {/* Сводка */}
         <div className="grid grid-cols-3 gap-2">
           <SummaryBadge count={summary.overdue} label="Пора" color="red" />

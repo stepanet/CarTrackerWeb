@@ -10,6 +10,7 @@ import { PieChart as PieIcon } from 'lucide-react';
 import type { CarWork, WorkCategory } from '../../models/CarWork';
 import { CATEGORY_ICONS } from '../../models/CarWork';
 import { getCategoryCosts } from '../../stores/statsHelpers';
+import { SectionHeader } from '../SectionHeader';
 
 interface CategoryChartProps {
   works: CarWork[];
@@ -34,10 +35,8 @@ export function CategoryChart({ works }: CategoryChartProps) {
 
   if (data.length === 0) {
     return (
-      <div className="bg-white rounded-xl p-4 shadow-sm">
-        <h3 className="font-semibold text-gray-900 mb-4">
-          Расходы по категориям
-        </h3>
+      <div className="bg-white rounded-2xl p-3.5 shadow-sm">
+        <SectionHeader title="Расходы по категориям" />
         <div className="h-56 flex flex-col items-center justify-center text-gray-400">
           <PieIcon className="w-12 h-12 mb-2" />
           <p className="text-sm">Нет данных для отображения</p>
@@ -47,12 +46,9 @@ export function CategoryChart({ works }: CategoryChartProps) {
   }
 
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm">
-      <h3 className="font-semibold text-gray-900 mb-4">
-        Расходы по категориям
-      </h3>
+    <div className="bg-white rounded-2xl p-3.5 shadow-sm">
+      <SectionHeader title="Расходы по категориям" />
 
-      {/* Круговая диаграмма с суммой в центре */}
       <div className="h-56 relative">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -78,7 +74,6 @@ export function CategoryChart({ works }: CategoryChartProps) {
           </PieChart>
         </ResponsiveContainer>
 
-        {/* Центральный текст */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="text-center">
             <p className="text-xs text-gray-500">Всего</p>
@@ -90,7 +85,6 @@ export function CategoryChart({ works }: CategoryChartProps) {
         </div>
       </div>
 
-      {/* Легенда */}
       <div className="mt-4 space-y-2">
         {data.map((item) => {
           const CategoryIcon = CATEGORY_ICONS[item.category];

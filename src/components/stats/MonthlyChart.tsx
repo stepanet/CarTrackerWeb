@@ -12,6 +12,7 @@ import {
 import { BarChart3 } from 'lucide-react';
 import type { CarWork } from '../../models/CarWork';
 import { getMonthlyCostsDetailed } from '../../stores/statsHelpers';
+import { SectionHeader } from '../SectionHeader';
 
 interface MonthlyChartProps {
   works: CarWork[];
@@ -40,28 +41,28 @@ export function MonthlyChart({ works }: MonthlyChartProps) {
   }, [data]);
 
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm">
-      {/* Заголовок + период */}
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h3 className="font-semibold text-gray-900">Расходы по месяцам</h3>
-        <div className="flex bg-gray-100 rounded-lg p-0.5">
-          {PERIODS.map((p) => (
-            <button
-              key={p.value}
-              onClick={() => setMonthsBack(p.value)}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                monthsBack === p.value
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="bg-white rounded-2xl p-3.5 shadow-sm">
+      <SectionHeader
+        title="Расходы по месяцам"
+        trailing={
+          <div className="flex bg-gray-100 rounded-lg p-0.5">
+            {PERIODS.map((p) => (
+              <button
+                key={p.value}
+                onClick={() => setMonthsBack(p.value)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  monthsBack === p.value
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
-      {/* График */}
       {!hasData ? (
         <EmptyChart />
       ) : (
@@ -95,7 +96,6 @@ export function MonthlyChart({ works }: MonthlyChartProps) {
                   content={<CustomTooltip />}
                 />
 
-                {/* Stacked bar: работы + детали */}
                 <Bar
                   dataKey="worksTotal"
                   stackId="cost"
@@ -110,7 +110,6 @@ export function MonthlyChart({ works }: MonthlyChartProps) {
                   name="Детали"
                 />
 
-                {/* Линия среднего */}
                 {averageMonthly > 0 && (
                   <ReferenceLine
                     y={averageMonthly}
@@ -129,7 +128,6 @@ export function MonthlyChart({ works }: MonthlyChartProps) {
             </ResponsiveContainer>
           </div>
 
-          {/* Легенда */}
           <div className="flex items-center justify-center gap-4 mt-3 text-xs text-gray-600">
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-sm bg-blue-500" />

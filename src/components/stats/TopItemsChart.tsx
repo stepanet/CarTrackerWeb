@@ -3,6 +3,7 @@ import type { CarWork } from '../../models/CarWork';
 import type { SubItemType } from '../../models/SubItem';
 import { getTopItems } from '../../stores/statsHelpers';
 import { Wrench, Package, BarChart3 } from 'lucide-react';
+import { SectionHeader } from '../SectionHeader';
 
 interface TopItemsChartProps {
   works: CarWork[];
@@ -17,10 +18,9 @@ export function TopItemsChart({ works }: TopItemsChartProps) {
   );
 
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm">
-      <h3 className="font-semibold text-gray-900 mb-3">Топ-5 затрат</h3>
+    <div className="bg-white rounded-2xl p-3.5 shadow-sm">
+      <SectionHeader title="Топ-5 затрат" />
 
-      {/* Переключатель тип */}
       <div className="flex bg-gray-100 rounded-lg p-0.5 mb-3">
         <TypeChip
           active={selectedType === 'work'}
@@ -38,7 +38,6 @@ export function TopItemsChart({ works }: TopItemsChartProps) {
         />
       </div>
 
-      {/* Список */}
       {items.length === 0 ? (
         <div className="py-8 text-center">
           <BarChart3 className="w-10 h-10 mx-auto mb-2 text-gray-300" />
@@ -52,16 +51,13 @@ export function TopItemsChart({ works }: TopItemsChartProps) {
         <div className="space-y-2.5">
           {items.map((item, index) => (
             <div key={item.id} className="flex items-center gap-3">
-              {/* Номер */}
               <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-500 shrink-0">
                 {index + 1}
               </span>
 
-              {/* Название + контекст */}
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-gray-900 truncate">{item.title}</p>
 
-                {/* Количество: "4 × 565 ₽" — если не 1 */}
                 {item.quantity !== undefined &&
                   item.unitPrice !== undefined &&
                   item.quantity !== 1 && (
@@ -74,7 +70,6 @@ export function TopItemsChart({ works }: TopItemsChartProps) {
                     </p>
                   )}
 
-                {/* К какому ТО относится */}
                 {item.workTitle && (
                   <p className="text-xs text-gray-400 truncate">
                     {item.workTitle}
@@ -92,7 +87,6 @@ export function TopItemsChart({ works }: TopItemsChartProps) {
                 )}
               </div>
 
-              {/* Сумма */}
               <span className="text-sm font-semibold text-gray-900 shrink-0">
                 {item.total.toLocaleString('ru-RU', {
                   maximumFractionDigits: 0,

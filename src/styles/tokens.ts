@@ -1,33 +1,58 @@
 /**
  * Design tokens — единые константы для отступов и радиусов.
- * Аналог Spacing и Radius в iOS-версии.
+ * 1:1 с iOS (Spacing / Radius / CardStyle).
  */
 
+// ═══════════════════════════════════════════════
+// Отступы
+// ═══════════════════════════════════════════════
+
 export const Spacing = {
-  /** Внешние отступы от края экрана */
-  screenPadding: 'px-4',
-  /** Внутренние отступы в карточках */
-  cardPadding: 'p-4',
-  /** Между секциями */
+  /** Между секциями на экране (iOS: 20) */
   sectionSpacing: 'space-y-5',
-  /** Между элементами внутри карточки */
+
+  /** Внешние отступы от края экрана (iOS: 16) */
+  screenPadding: 'px-4',
+
+  /** Внутренние отступы в карточках (iOS: 14 → p-3.5) */
+  cardPadding: 'p-3.5',
+
+  /** Между элементами внутри карточки (iOS: 8 → gap-2) */
   itemSpacing: 'gap-2',
-  /** Маленький отступ */
+
+  /** Маленький отступ (iOS: 4 → gap-1) */
   smallSpacing: 'gap-1',
 } as const;
 
+// ═══════════════════════════════════════════════
+// Радиусы
+// ═══════════════════════════════════════════════
+
 export const Radius = {
-  /** Карточки */
+  /** Карточки (iOS: 16 → rounded-2xl) */
   card: 'rounded-2xl',
-  /** Кнопки */
+  /** Кнопки (iOS: 12 → rounded-xl) */
   button: 'rounded-xl',
-  /** Чипы / маленькие элементы */
+  /** Чипы / маленькие элементы (iOS: 20 → rounded-full для круглых) */
   chip: 'rounded-full',
 } as const;
 
-/** Единый стиль карточки (Tailwind-классы) */
-export const CARD_STYLE = 'bg-white rounded-2xl p-4 shadow-sm';
+// ═══════════════════════════════════════════════
+// Стиль карточки (аналог cardStyle() в iOS)
+// ═══════════════════════════════════════════════
 
-/** Единый стиль заголовка экрана */
+export const CARD_STYLE = `bg-white ${Radius.card} ${Spacing.cardPadding} shadow-sm`;
+
+// ═══════════════════════════════════════════════
+// Заголовок экрана (аналог ScreenHeader в iOS)
+// ═══════════════════════════════════════════════
+
 export const SCREEN_HEADER_TITLE = 'text-3xl font-bold text-gray-900';
 export const SCREEN_HEADER_SUBTITLE = 'text-sm text-gray-500 mt-1';
+
+// ═══════════════════════════════════════════════
+// Заголовок секции (аналог SectionHeader в iOS)
+// ═══════════════════════════════════════════════
+
+export const SECTION_HEADER_TITLE = 'text-base font-semibold text-gray-900';
+export const SECTION_HEADER_ROW = 'flex items-center justify-between gap-2 mb-3';
